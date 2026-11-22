@@ -1,0 +1,308 @@
+// ==========================================
+// INTEGRASI GOOGLE SHEETS API - SDIT NURUSSIROJ
+// ==========================================
+
+const { google } = require('googleapis');
+const path = require('path');
+require('dotenv').config();
+
+const KEYFILEPATH = path.join(__dirname, 'credentials.json');
+const SCOPES = ['https://www.googleapis.com/auth/spreadsheets'];
+
+const auth = new google.auth.GoogleAuth({
+  keyFile: KEYFILEPATH,
+  scopes: SCOPES,
+});
+
+function getSpreadsheetId() {
+  const id = process.env.GOOGLE_SHEET_ID;
+  if (!id) throw new Error("GOOGLE_SHEET_ID belum terpasang di file .env!");
+  return id;
+}
+
+function normalizeImageUrl(rawUrl) {
+  if (!rawUrl || typeof rawUrl !== 'string') return '';
+  const url = rawUrl.trim();
+  if (!url) return '';
+
+  const driveFileMatch = url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
+  if (driveFileMatch && driveFileMatch[1]) {
+    return `https://drive.google.com/thumbnail?id=${driveFileMatch[1]}&sz=w1000`;
+  }
+  const driveIdMatch = url.match(/drive\.google\.com\/open\?id=([a-zA-Z0-9_-]+)/);
+  if (driveIdMatch && driveIdMatch[1]) {
+    return `https://drive.google.com/thumbnail?id=${driveIdMatch[1]}&sz=w1000`;
+  }
+
+  return url;
+}
+
+// 1. Ambil Soal dari Sheet (Kolom A sampai N)
+async function getQuestionsFromSheet(sheetName = 'Soal') {
+  try {
+    const client = await auth.getClient();
+    const googleSheets = google.sheets({ version: 'v4', auth: client });
+
+    const response = await googleSheets.spreadsheets.values.get({
+      spreadsheetId: getSpreadsheetId(),
+      range: `${sheetName}!A2:N`,
+    });
+
+    const rows = response.data.values || [];
+    
+    return rows
+      .filter((row) => row[0] && row[1])
+      .map((row) => ({
+        id: row[0],
+        pertanyaan: row[1] || '',
+        opsi: [
+          { key: 'A', text: row[2] || '', image: normalizeImageUrl(row[10]) },
+          { key: 'B', text: row[3] || '', image: normalizeImageUrl(row[11]) },
+          { key: 'C', text: row[4] || '', image: normalizeImageUrl(row[12]) },
+          { key: 'D', text: row[5] || '', image: normalizeImageUrl(row[13]) }
+        ],
+        jawaban_benar: row[6] || '',
+        kelas: row[7] || 'Umum',
+        mapel: row[8] || 'Umum',
+        gambar_soal: normalizeImageUrl(row[9])
+      }));
+  } catch (error) {
+    console.error(`Gagal mengambil soal dari tab ${sheetName}:`, error.message);
+    throw error;
+  }
+}
+
+// 2. Simpan Hasil Ujian Siswa
+async function saveResultToSheet(nama, username, nilai, detailJawaban, kelas = 'Umum', mapel = 'Umum') {
+  try {
+    const client = await auth.getClient();
+    const googleSheets = google.sheets({ version: 'v4', auth: client });
+    const timestamp = new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' });
+
+    await googleSheets.spreadsheets.values.append({
+      spreadsheetId: getSpreadsheetId(),
+      range: 'Hasil!A:G',
+      valueInputOption: 'USER_ENTERED',
+      resource: {
+        values: [[
+          timestamp,
+          nama,
+          username,
+          nilai,
+          JSON.stringify(detailJawaban),
+          kelas,
+          mapel
+        ]],
+      },
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error('Gagal menyimpan hasil ke Google Sheets:', error.message);
+    return { success: false, error: error.message };
+  }
+}
+
+// 3. Tambah Soal Baru
+async function addQuestionToSheet(pertanyaan, opsiA, opsiB, opsiC, opsiD, jawabanBenar, kelas = 'Umum', mapel = 'Umum', images = {}, sheetName = 'Soal') {
+  try {
+    const client = await auth.getClient();
+    const googleSheets = google.sheets({ version: 'v4', auth: client });
+    const newId = `Q${Date.now().toString().slice(-6)}`;
+    const { gambarSoal = '', gambarA = '', gambarB = '', gambarC = '', gambarD = '' } = images;
+
+    await googleSheets.spreadsheets.values.append({
+      spreadsheetId: getSpreadsheetId(),
+      range: `${sheetName}!A:N`,
+      valueInputOption: 'USER_ENTERED',
+      resource: {
+        values: [[
+          newId,
+          pertanyaan,
+          opsiA,
+          opsiB,
+          opsiC,
+          opsiD,
+          jawabanBenar.toUpperCase(),
+          kelas.trim(),
+          mapel.trim(),
+          gambarSoal,
+          gambarA,
+          gambarB,
+          gambarC,
+          gambarD
+        ]],
+      },
+    });
+
+    return { success: true, id: newId };
+  } catch (error) {
+    console.error(`Gagal menambah soal ke tab ${sheetName}:`, error.message);
+    return { success: false, error: error.message };
+  }
+}
+
+// 4. Hapus Satu Soal
+async function deleteQuestionFromSheet(id, sheetName = 'Soal') {
+  try {
+    const client = await auth.getClient();
+    const googleSheets = google.sheets({ version: 'v4', auth: client });
+    const spreadsheetId = getSpreadsheetId();
+
+    const response = await googleSheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: `${sheetName}!A2:N`,
+    });
+
+    const rows = response.data.values || [];
+    const filteredRows = rows.filter(row => row[0] !== id);
+
+    await googleSheets.spreadsheets.values.clear({
+      spreadsheetId,
+      range: `${sheetName}!A2:N`,
+    });
+
+    if (filteredRows.length > 0) {
+      await googleSheets.spreadsheets.values.update({
+        spreadsheetId,
+        range: `${sheetName}!A2`,
+        valueInputOption: 'USER_ENTERED',
+        resource: { values: filteredRows },
+      });
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error(`Gagal menghapus soal dari tab ${sheetName}:`, error.message);
+    return { success: false, error: error.message };
+  }
+}
+
+// 5. Hapus Banyak Soal Sekaligus (Massal)
+async function deleteQuestionsFromSheet(ids = [], sheetName = 'Soal') {
+  try {
+    const client = await auth.getClient();
+    const googleSheets = google.sheets({ version: 'v4', auth: client });
+    const spreadsheetId = getSpreadsheetId();
+
+    const response = await googleSheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: `${sheetName}!A2:N`,
+    });
+
+    const rows = response.data.values || [];
+    const filteredRows = rows.filter(row => !ids.includes(row[0]));
+
+    await googleSheets.spreadsheets.values.clear({
+      spreadsheetId,
+      range: `${sheetName}!A2:N`,
+    });
+
+    if (filteredRows.length > 0) {
+      await googleSheets.spreadsheets.values.update({
+        spreadsheetId,
+        range: `${sheetName}!A2`,
+        valueInputOption: 'USER_ENTERED',
+        resource: { values: filteredRows },
+      });
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error(`Gagal menghapus soal massal dari tab ${sheetName}:`, error.message);
+    return { success: false, error: error.message };
+  }
+}
+
+// 6. Ambil Rekap Hasil Ujian Siswa dari Sheet 'Hasil'
+async function getResultsFromSheet() {
+  try {
+    const client = await auth.getClient();
+    const googleSheets = google.sheets({ version: 'v4', auth: client });
+
+    const response = await googleSheets.spreadsheets.values.get({
+      spreadsheetId: getSpreadsheetId(),
+      range: 'Hasil!A2:G',
+    });
+
+    const rows = response.data.values || [];
+
+    return rows.map((row, index) => ({
+      no: index + 1,
+      waktu: row[0] || '-',
+      nama: row[1] || 'Tanpa Nama',
+      username: row[2] || '-',
+      nilai: parseFloat(row[3]) || 0,
+      kelas: row[5] || 'Umum',
+      mapel: row[6] || 'Umum'
+    })).reverse();
+  } catch (error) {
+    console.error('Gagal mengambil rekap hasil dari Google Sheets:', error.message);
+    return [];
+  }
+}
+
+// 7. Ambil & Simpan Konfigurasi Token Permanen di Tab 'Config'
+async function getConfigsFromSheet() {
+  try {
+    const client = await auth.getClient();
+    const googleSheets = google.sheets({ version: 'v4', auth: client });
+
+    const response = await googleSheets.spreadsheets.values.get({
+      spreadsheetId: getSpreadsheetId(),
+      range: 'Config!A2:D',
+    });
+
+    const rows = response.data.values || [];
+    return rows
+      .filter(r => r[0] && r[2])
+      .map(r => ({
+        kelas: r[0].trim(),
+        mapel: (r[1] || 'Umum').trim(),
+        token: r[2].trim().toUpperCase(),
+        durasiMenit: parseInt(r[3], 10) || 60
+      }));
+  } catch (error) {
+    console.warn('Gagal membaca tab Config:', error.message);
+    return null;
+  }
+}
+
+async function saveConfigsToSheet(configs = []) {
+  try {
+    const client = await auth.getClient();
+    const googleSheets = google.sheets({ version: 'v4', auth: client });
+    const spreadsheetId = getSpreadsheetId();
+
+    await googleSheets.spreadsheets.values.clear({
+      spreadsheetId,
+      range: 'Config!A2:D',
+    });
+
+    if (configs.length > 0) {
+      const values = configs.map(c => [c.kelas, c.mapel, c.token, c.durasiMenit]);
+      await googleSheets.spreadsheets.values.update({
+        spreadsheetId,
+        range: 'Config!A2',
+        valueInputOption: 'USER_ENTERED',
+        resource: { values },
+      });
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Gagal menyimpan konfigurasi token ke tab Config:', error.message);
+    return { success: false, error: error.message };
+  }
+}
+
+module.exports = {
+  getQuestionsFromSheet,
+  saveResultToSheet,
+  addQuestionToSheet,
+  deleteQuestionFromSheet,
+  deleteQuestionsFromSheet,
+  getResultsFromSheet,
+  getConfigsFromSheet,
+  saveConfigsToSheet
+};
