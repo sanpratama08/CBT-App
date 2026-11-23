@@ -32,9 +32,8 @@
       <span>⚠️ Peringatan! Jangan keluar dari halaman ujian. Pelanggaran: <span id="warningCount">0</span>/3</span>
     </div>
 
-    <!-- CONTAINER SOAL -->
-    <div id="soalContainer" class="space-y-6">
-      <!-- Soal akan dirender secara dinamis oleh JavaScript -->
+    <!-- CONTAINER UTAMA SOAL -->
+    <div id="soalContainer" class="space-y-8">
       <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 text-center text-slate-500">
         Memuat soal ujian...
       </div>
@@ -60,13 +59,13 @@
     document.getElementById('infoSiswa').textContent = `Siswa: ${session.nama} (${session.username}) | Kelas: ${session.kelas}`;
     document.getElementById('infoMapel').textContent = `Mata Pelajaran: ${session.mapel}`;
 
-    let soalUjian = [];
+    let dataPG = [];
+    let dataIsian = [];
     let jawabanSiswa = {};
     let warnings = 0;
     let timerInterval;
     let heartbeatInterval;
 
-    // Fungsi Pengacak Array (Shuffle)
     function shuffleArray(array) {
       let arr = [...array];
       for (let i = arr.length - 1; i > 0; i--) {
@@ -76,7 +75,7 @@
       return arr;
     }
 
-    // Ambil Soal Berdasarkan Token / Kelas / Mapel
+    // Ambil Soal dan Pisahkan Berdasarkan Tipe
     async function muatSoal() {
       try {
         const res = await fetch('/api/ujian/start', {
@@ -89,21 +88,20 @@
         if (result.success) {
           let rawData = result.data;
 
-          // 1. Pisahkan antara Pilihan Ganda (PG) dan Isian Singkat
-          let soalPG = rawData.filter(q => q.tipe !== 'isian');
-          let soalIsian = rawData.filter(q => q.tipe === 'isian');
+          // Pisahkan Pilihan Ganda dan Isian berdasarkan properti 'tipe'
+          let rawPG = rawData.filter(q => q.tipe !== 'isian');
+          let rawIsian = rawData.filter(q => q.tipe === 'isian');
 
-          // 2. Acak masing-masing kelompok soal secara independen
-          let randomizedPG = shuffleArray(soalPG).map(q => ({
+          // Acak soal PG dan acak opsi jawabannya
+          dataPG = shuffleArray(rawPG).map(q => ({
             ...q,
-            opsi: shuffleArray(q.opsi) // Acak urutan pilihan ganda A, B, C, D
+            opsi: shuffleArray(q.opsi)
           }));
-          let randomizedIsian = shuffleArray(soalIsian);
 
-          // 3. Gabungkan kembali (PG di atas, Isian di bawah - atau sesuai kebutuhan)
-          soalUjian = [...randomizedPG, ...randomizedIsian];
+          // Acak soal Isian Singkat
+          dataIsian = shuffleArray(rawIsian);
 
-          renderSoal();
+          renderSoalTerpisah();
           mulaiTimer(result.durasiMenit || 60);
           mulaiHeartbeat();
         } else {
@@ -116,64 +114,94 @@
       }
     }
 
-    // Render Soal ke Layar (Dipisah Bagian PG & Isian Singkat agar rapi)
-    function renderSoal() {
+    // Render Soal dengan Bagian Terpisah (Bagian I: PG, Bagian II: Isian)
+    function renderSoalTerpisah() {
       const container = document.getElementById('soalContainer');
       container.innerHTML = '';
 
-      if (soalUjian.length === 0) {
+      if (dataPG.length === 0 && dataIsian.length === 0) {
         container.innerHTML = '<div class="bg-white p-6 rounded-2xl text-center text-slate-500">Tidak ada soal untuk ujian ini.</div>';
         return;
       }
 
-      soalUjian.forEach((q, index) => {
-        let inputHTML = '';
+      // --- BAGIAN I: PILIHAN GANDA ---
+      if (dataPG.length > 0) {
+        const sectionPG = document.createElement('div');
+        sectionPG.className = 'space-y-6';
+        sectionPG.innerHTML = `
+          <div class="bg-emerald-800 text-white px-5 py-3 rounded-2xl shadow-sm font-bold text-sm tracking-wide">
+            BAGIAN I: PILIHAN GANDA
+          </div>
+        `;
 
-        if (q.tipe === 'isian') {
-          // Render Kotak Input untuk Isian Singkat
-          inputHTML = `
-            <div class="mt-3">
-              <input type="text" placeholder="Ketik jawaban singkat di sini..." 
-                value="${jawabanSiswa[q.id] || ''}"
-                oninput="simpanJawaban('${q.id}', this.value)"
-                class="w-full sm:w-1/2 p-3 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-none transition">
-            </div>
-          `;
-        } else {
-          // Render Pilihan Ganda (Radio Button)
-          inputHTML = `<div class="space-y-2 mt-3">` + q.opsi.map(opt => {
+        dataPG.forEach((q, index) => {
+          let opsiHTML = q.opsi.map(opt => {
             const isChecked = jawabanSiswa[q.id] === opt.key ? 'checked' : '';
             return `
               <label class="flex items-start gap-3 p-3 bg-slate-50 hover:bg-emerald-50/50 border border-slate-200 rounded-xl cursor-pointer transition">
                 <input type="radio" name="soal_${q.id}" value="${opt.key}" ${isChecked} onchange="simpanJawaban('${q.id}', '${opt.key}')" class="mt-0.5 text-emerald-600 focus:ring-emerald-500">
-                <span class="text-xs text-slate-700 font-medium"><b>${opt.key}.</b> ${opt.text}</span>
+                <span class="text-xs sm:text-sm text-slate-700 font-medium"><b>${opt.key}.</b> ${opt.text}</span>
               </label>
             `;
-          }).join('') + `</div>`;
-        }
+          }).join('');
 
-        const card = document.createElement('div');
-        card.className = 'bg-white p-5 sm:p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4';
-        card.innerHTML = `
-          <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-            <span class="text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full">Soal No. ${index + 1} (${q.tipe === 'isian' ? 'Isian Singkat' : 'Pilihan Ganda'})</span>
+          const card = document.createElement('div');
+          card.className = 'bg-white p-5 sm:p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4';
+          card.innerHTML = `
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+              <span class="text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full">Soal No. ${index + 1}</span>
+            </div>
+            <div class="text-xs sm:text-sm text-slate-800 font-medium leading-relaxed">
+              ${q.pertanyaan}
+            </div>
+            ${q.gambar_soal ? `<div class="my-2"><img src="${q.gambar_soal}" class="max-h-48 rounded-xl border border-slate-200 object-contain"></div>` : ''}
+            <div class="space-y-2 mt-3">${opsiHTML}</div>
+          `;
+          sectionPG.appendChild(card);
+        });
+        container.appendChild(sectionPG);
+      }
+
+      // --- BAGIAN II: ISIAN SINGKAT ---
+      if (dataIsian.length > 0) {
+        const sectionIsian = document.createElement('div');
+        sectionIsian.className = 'space-y-6 pt-4';
+        sectionIsian.innerHTML = `
+          <div class="bg-teal-800 text-white px-5 py-3 rounded-2xl shadow-sm font-bold text-sm tracking-wide">
+            BAGIAN II: ISIAN SINGKAT
           </div>
-          <div class="text-xs sm:text-sm text-slate-800 font-medium leading-relaxed">
-            ${q.pertanyaan}
-          </div>
-          ${q.gambar_soal ? `<div class="my-2"><img src="${q.gambar_soal}" class="max-h-48 rounded-xl border border-slate-200 object-contain"></div>` : ''}
-          ${inputHTML}
         `;
-        container.appendChild(card);
-      });
+
+        dataIsian.forEach((q, index) => {
+          const val = jawabanSiswa[q.id] || '';
+          const card = document.createElement('div');
+          card.className = 'bg-white p-5 sm:p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4';
+          card.innerHTML = `
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+              <span class="text-xs font-bold text-teal-700 bg-teal-50 px-3 py-1 rounded-full">Soal No. ${index + 1}</span>
+            </div>
+            <div class="text-xs sm:text-sm text-slate-800 font-medium leading-relaxed">
+              ${q.pertanyaan}
+            </div>
+            ${q.gambar_soal ? `<div class="my-2"><img src="${q.gambar_soal}" class="max-h-48 rounded-xl border border-slate-200 object-contain"></div>` : ''}
+            <div class="mt-3">
+              <label class="block text-[11px] font-semibold text-slate-500 mb-1">Jawaban Singkat:</label>
+              <input type="text" placeholder="Ketik jawaban Anda di sini..." 
+                value="${val}"
+                oninput="simpanJawaban('${q.id}', this.value)"
+                class="w-full sm:w-2/3 p-3 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-teal-500 focus:outline-none transition">
+            </div>
+          `;
+          sectionIsian.appendChild(card);
+        });
+        container.appendChild(sectionIsian);
+      }
     }
 
-    // Simpan Jawaban Sementara Siswa
     function simpanJawaban(idSoal, nilai) {
       jawabanSiswa[idSoal] = nilai;
     }
 
-    // Timer Mundur Ujian
     function mulaiTimer(durasiMenit) {
       let totalDetik = durasiMenit * 60;
       timerInterval = setInterval(() => {
@@ -192,9 +220,7 @@
       }, 1000);
     }
 
-    // Anti-Cheat & Heartbeat
     function mulaiHeartbeat() {
-      // Deteksi keluar tab / minimize browser
       document.addEventListener('visibilitychange', () => {
         if (document.hidden) {
           warnings++;
@@ -211,7 +237,8 @@
       heartbeatInterval = setInterval(async () => {
         try {
           const answeredCount = Object.keys(jawabanSiswa).length;
-          const res = await fetch('/api/ujian/heartbeat', {
+          const totalSoal = dataPG.length + dataIsian.length;
+          await fetch('/api/ujian/heartbeat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -220,16 +247,11 @@
               kelas: session.kelas,
               mapel: session.mapel,
               answeredCount,
-              totalQuestions: soalUjian.length,
+              totalQuestions: totalSoal,
               warnings,
               status: 'Mengerjakan'
             })
           });
-          const data = await res.json();
-          if (data.forceSubmit) {
-            alert(data.message || 'Ujian dihentikan oleh sistem.');
-            submitUjian();
-          }
         } catch (e) {
           console.error('Heartbeat error:', e);
         }
@@ -237,8 +259,9 @@
     }
 
     function konfirmasiSubmit() {
+      const totalSoal = dataPG.length + dataIsian.length;
       const terisi = Object.keys(jawabanSiswa).length;
-      if (confirm(`Anda telah menjawab ${terisi} dari ${soalUjian.length} soal. Yakin ingin mengumpulkan ujian sekarang?`)) {
+      if (confirm(`Anda telah menjawab ${terisi} dari ${totalSoal} soal. Yakin ingin mengumpulkan ujian sekarang?`)) {
         submitUjian();
       }
     }
@@ -274,7 +297,6 @@
       }
     }
 
-    // Jalankan pemuatan soal saat halaman dibuka
     muatSoal();
   </script>
 </body>
