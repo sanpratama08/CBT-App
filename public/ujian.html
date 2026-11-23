@@ -3,227 +3,81 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Lembar Ujian Siswa - CBT SDIT NURUSSIROJ</title>
+  <title>Ujian Berlangsung - CBT SDIT NURUSSIROJ</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Library html2pdf untuk cetak PDF hasil ujian siswa -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
-<body class="bg-slate-100 font-sans text-slate-800 antialiased min-h-screen flex flex-col select-none" oncopy="return false" oncut="return false" onpaste="return false">
+<body class="bg-slate-100 font-sans text-slate-800 antialiased min-h-screen pb-12">
 
-  <!-- OVERLAY PERINGATAN FULLSCREEN / CURANG -->
-  <div id="fullscreenOverlay" class="fixed inset-0 bg-slate-900/90 z-50 flex flex-col items-center justify-center p-6 text-center text-white hidden">
-    <div class="bg-white text-slate-900 p-8 rounded-3xl max-w-md w-full shadow-2xl space-y-4">
-      <div class="text-4xl">⚠️</div>
-      <h2 class="text-lg font-bold text-red-600">Peringatan Keamanan Ujian!</h2>
-      <p id="pesanPeringatanModal" class="text-xs text-slate-600 leading-relaxed">
-        Anda terdeteksi keluar dari mode layar penuh atau meninggalkan halaman ujian. Ujian wajib dikerjakan dalam mode layar penuh.
-      </p>
-      <button onclick="mintaFullscreen()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-2xl text-xs transition shadow-md">
-        Kembali ke Layar Penuh & Lanjutkan
-      </button>
-    </div>
-  </div>
-
-  <!-- MODAL HASIL UJIAN MODERN (HIDDEN AWALNYA) -->
-  <div id="modalHasil" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-    <div class="bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-200">
-      
-      <!-- Area yang akan di-export ke PDF -->
-      <div id="areaSertifikatNilai" class="p-8 space-y-6 bg-white">
-        <div class="text-center space-y-2 border-b border-slate-100 pb-6">
-          <div class="w-14 h-14 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto border border-emerald-100 p-2">
-            <img src="/images/logo.png" alt="Logo" class="w-full h-full object-contain" onerror="this.style.display='none'">
-          </div>
-          <h2 class="font-bold text-base text-slate-900">SDIT NURUSSIROJ</h2>
-          <p class="text-xs text-slate-500 uppercase tracking-wider font-semibold">Hasil Resmi Ujian Berbasis Komputer (CBT)</p>
-        </div>
-
-        <div class="bg-slate-50 rounded-2xl p-4 space-y-3 text-xs border border-slate-200/60">
-          <div class="flex justify-between"><span class="text-slate-500">Nama Siswa:</span> <span id="resNama" class="font-bold text-slate-800">-</span></div>
-          <div class="flex justify-between"><span class="text-slate-500">NIS / Username:</span> <span id="resUsername" class="font-bold text-slate-800">-</span></div>
-          <div class="flex justify-between"><span class="text-slate-500">Kelas / Mapel:</span> <span id="resKelasMapel" class="font-bold text-emerald-700">-</span></div>
-          <div class="flex justify-between"><span class="text-slate-500">Waktu Submit:</span> <span id="resWaktu" class="font-medium text-slate-700">-</span></div>
-        </div>
-
-        <!-- SKOR UTAMA -->
-        <div class="grid grid-cols-2 gap-4 text-center">
-          <div class="bg-emerald-50 border border-emerald-100 p-4 rounded-2xl">
-            <span class="text-xs text-emerald-600 font-medium block">Jawaban Benar</span>
-            <span id="resBenar" class="text-xl font-extrabold text-emerald-800">0 / 0</span>
-          </div>
-          <div class="bg-amber-50 border border-amber-100 p-4 rounded-2xl">
-            <span class="text-xs text-amber-600 font-medium block">Nilai Akhir</span>
-            <span id="resNilai" class="text-2xl font-extrabold text-amber-700">0</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- TOMBOL AKSI MODAL -->
-      <div class="p-6 bg-slate-50 border-t border-slate-100 flex gap-3">
-        <button onclick="downloadPDF()" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-2xl text-xs transition shadow-md flex items-center justify-center gap-2">
-          📥 Unduh Bukti PDF
-        </button>
-        <button onclick="selesaiDanKeluar()" class="px-5 bg-slate-900 hover:bg-slate-800 text-white font-bold py-3 rounded-2xl text-xs transition">
-          Selesai & Keluar
-        </button>
-      </div>
-
-    </div>
-  </div>
-
-  <!-- HEADER UJIAN -->
-  <header class="bg-emerald-700 text-white shadow-md sticky top-0 z-40 px-4 py-3 flex flex-wrap justify-between items-center gap-4">
-    <div class="flex items-center gap-3">
-      <div class="w-10 h-10 bg-white rounded-xl flex items-center justify-center p-1 shadow">
-        <img src="/images/logo.png" alt="Logo" class="w-full h-full object-contain" onerror="this.style.display='none'">
-      </div>
+  <!-- NAVBAR ATAS (INFORMASI UJIAN & TIMER) -->
+  <header class="bg-emerald-700 text-white shadow-md sticky top-0 z-50">
+    <div class="max-w-4xl mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-2">
       <div>
-        <h1 id="headerMapel" class="font-bold text-sm tracking-wide">Mata Pelajaran</h1>
-        <p id="headerSiswa" class="text-xs text-emerald-100">Nama Siswa - Kelas</p>
+        <h1 id="infoMapel" class="font-bold text-sm sm:text-base">Mata Pelajaran: -</h1>
+        <p id="infoSiswa" class="text-xs text-emerald-100">Siswa: - | Kelas: -</p>
       </div>
-    </div>
-
-    <!-- TIMER & WARNING -->
-    <div class="flex items-center gap-3">
-      <div class="bg-amber-500/20 border border-amber-400/40 px-3 py-1.5 rounded-2xl flex items-center gap-2 text-xs text-amber-200 font-medium">
-        <span>⚠️ Peringatan:</span>
-        <span id="warningCount" class="font-bold text-white bg-amber-600 px-2 py-0.5 rounded-full">0</span>
-      </div>
-      <div class="bg-emerald-800/80 border border-emerald-600 px-4 py-1.5 rounded-2xl flex items-center gap-2 shadow-inner">
-        <span class="text-xs text-emerald-200 font-medium">Sisa Waktu:</span>
-        <span id="timerDisplay" class="font-mono font-bold text-amber-300 text-sm tracking-wider">00:00:00</span>
+      <div class="flex items-center gap-3">
+        <div class="bg-emerald-800 border border-emerald-600 px-3 py-1.5 rounded-xl text-center">
+          <span class="text-[10px] block text-emerald-200 uppercase tracking-wider">Sisa Waktu</span>
+          <span id="timer" class="font-mono font-bold text-sm text-yellow-300">00:00:00</span>
+        </div>
       </div>
     </div>
   </header>
 
-  <!-- KONTEN UTAMA -->
-  <main class="flex-1 max-w-6xl w-full mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
-    
-    <!-- KOTAK SOAL -->
-    <section class="lg:col-span-3 bg-white rounded-3xl shadow-sm border border-slate-200/80 p-6 space-y-6">
-      <div class="flex justify-between items-center border-b border-slate-100 pb-4">
-        <span id="nomorSoalLabel" class="text-xs font-bold text-emerald-700 uppercase tracking-wider bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100">Soal No. 1</span>
-        <span class="text-xs text-slate-400">Mode Ujian Aman (Secure CBT)</span>
-      </div>
+  <!-- KONTEN UTAMA UJIAN -->
+  <main class="max-w-4xl mx-auto px-4 mt-6 space-y-6">
 
-      <div id="teksPertanyaan" class="text-base font-medium text-slate-900 leading-relaxed whitespace-pre-line">
+    <!-- PERINGATAN ANTI-CHEAT -->
+    <div id="warningBanner" class="hidden bg-amber-50 border border-amber-200 text-amber-800 p-3 rounded-2xl text-xs font-medium flex items-center justify-between">
+      <span>⚠️ Peringatan! Jangan keluar dari halaman ujian. Pelanggaran: <span id="warningCount">0</span>/3</span>
+    </div>
+
+    <!-- CONTAINER SOAL -->
+    <div id="soalContainer" class="space-y-6">
+      <!-- Soal akan dirender secara dinamis oleh JavaScript -->
+      <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 text-center text-slate-500">
         Memuat soal ujian...
       </div>
+    </div>
 
-      <div id="containerGambarSoal" class="hidden">
-        <img id="gambarSoal" src="" alt="Gambar Soal" class="max-h-64 rounded-2xl border border-slate-200 object-contain mx-auto shadow-sm">
-      </div>
-
-      <div id="optionsContainer" class="space-y-3 pt-2">
-        <!-- Opsi jawaban -->
-      </div>
-
-      <div class="flex justify-between items-center pt-6 border-t border-slate-100">
-        <button id="btnPrev" onclick="navigasiSoal(-1)" 
-          class="px-5 py-2.5 rounded-2xl border border-slate-200 font-semibold text-xs text-slate-600 hover:bg-slate-50 transition active:scale-95 disabled:opacity-40 disabled:pointer-events-none">
-          ← Sebelumnya
-        </button>
-        <button id="btnNext" onclick="navigasiSoal(1)" 
-          class="px-5 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 font-semibold text-xs text-white transition shadow-md shadow-emerald-600/20 active:scale-95">
-          Selanjutnya →
-        </button>
-      </div>
-    </section>
-
-    <!-- SIDEBAR -->
-    <aside class="bg-white rounded-3xl shadow-sm border border-slate-200/80 p-6 space-y-6 sticky top-20">
-      <div>
-        <h2 class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-3">Daftar Nomor Soal</h2>
-        <div id="gridNavSoal" class="grid grid-cols-5 gap-2 max-h-60 overflow-y-auto p-1"></div>
-      </div>
-
-      <div class="pt-4 border-t border-slate-100">
-        <button id="btnSubmitUjian" onclick="konfirmasiSelesai()" 
-          class="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-3 rounded-2xl text-xs transition shadow-lg active:scale-95">
-          Akhiri & Kirim Ujian
-        </button>
-      </div>
-    </aside>
+    <!-- TOMBOL SELESAI / SUBMIT -->
+    <div class="flex justify-end pt-4">
+      <button onclick="konfirmasiSubmit()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-8 py-3.5 rounded-2xl text-xs sm:text-sm shadow-lg shadow-emerald-600/20 transition active:scale-95">
+        Kirim / Selesai Ujian
+      </button>
+    </div>
 
   </main>
 
   <!-- SCRIPT LOGIC UJIAN -->
   <script>
-    const rawSession = localStorage.getItem('cbt_session') || sessionStorage.getItem('cbt_session');
-    let session = null;
-    try { session = rawSession ? JSON.parse(rawSession) : null; } catch (e) { session = null; }
-
-    let soalList = [];
-    let currentIndex = 0;
-    let jawabanSiswa = {}; 
-    let sisaDetik = 0;
-    let timerInterval = null;
-    let heartbeatInterval = null;
-    let warningCount = 0;
-    let isSubmitting = false;
-
-    if (!session || !session.token) {
+    let session = JSON.parse(localStorage.getItem('cbt_session'));
+    if (!session) {
       alert('Sesi login tidak ditemukan. Silakan login kembali.');
       window.location.href = '/index.html';
-    } else {
-      document.getElementById('headerMapel').textContent = session.mapel || 'Ujian Berbasis Komputer';
-      document.getElementById('headerSiswa').textContent = `${session.nama} (${session.username}) - ${session.kelas}`;
     }
 
-    // Fullscreen Otomatis & Paksa Masuk Fullscreen Saat Interaksi Pertama
-    function mintaFullscreen() {
-      const elem = document.documentElement;
-      if (elem.requestFullscreen) {
-        elem.requestFullscreen().catch(() => {});
-      } else if (elem.webkitRequestFullscreen) {
-        elem.webkitRequestFullscreen();
-      } else if (elem.msRequestFullscreen) {
-        elem.msRequestFullscreen();
+    document.getElementById('infoSiswa').textContent = `Siswa: ${session.nama} (${session.username}) | Kelas: ${session.kelas}`;
+    document.getElementById('infoMapel').textContent = `Mata Pelajaran: ${session.mapel}`;
+
+    let soalUjian = [];
+    let jawabanSiswa = {};
+    let warnings = 0;
+    let timerInterval;
+    let heartbeatInterval;
+
+    // Fungsi Pengacak Array (Shuffle)
+    function shuffleArray(array) {
+      let arr = [...array];
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
       }
-      document.getElementById('fullscreenOverlay').classList.add('hidden');
+      return arr;
     }
 
-    // Pemicu fullscreen otomatis begitu halaman dimuat atau ada klik pertama
-    window.addEventListener('load', () => {
-      mintaFullscreen();
-    });
-
-    document.addEventListener('click', () => {
-      if (!document.fullscreenElement && !isSubmitting) {
-        mintaFullscreen();
-      }
-    }, { once: true });
-
-    document.addEventListener('fullscreenchange', () => {
-      if (!document.fullscreenElement && !isSubmitting) {
-        document.getElementById('fullscreenOverlay').classList.remove('hidden');
-        tambahPeringatan('Keluar dari layar penuh!');
-      }
-    });
-
-    document.addEventListener('visibilitychange', () => {
-      if (document.hidden && !isSubmitting && soalList.length > 0) {
-        tambahPeringatan('Berpindah ke tab atau aplikasi lain!');
-      }
-    });
-
-    window.addEventListener('blur', () => {
-      if (!isSubmitting && soalList.length > 0) {
-        tambahPeringatan('Keluar dari jendela ujian!');
-      }
-    });
-
-    function tambahPeringatan(alasan) {
-      warningCount++;
-      document.getElementById('warningCount').textContent = warningCount;
-      document.getElementById('pesanPeringatanModal').textContent = `Peringatan (${warningCount}): Anda terdeteksi ${alasan} Ujian wajib diselesaikan di layar penuh.`;
-      document.getElementById('fullscreenOverlay').classList.remove('hidden');
-      kirimHeartbeat();
-    }
-
-    async function muatSoalUjian() {
-      if (!session || !session.token) return;
-
+    // Ambil Soal Berdasarkan Token / Kelas / Mapel
+    async function muatSoal() {
       try {
         const res = await fetch('/api/ujian/start', {
           method: 'POST',
@@ -232,276 +86,196 @@
         });
         const result = await res.json();
 
-        if (result.success && Array.isArray(result.data) && result.data.length > 0) {
-          soalList = result.data;
-          if (result.kelas) session.kelas = result.kelas;
-          if (result.mapel) session.mapel = result.mapel;
-          document.getElementById('headerMapel').textContent = session.mapel;
-          document.getElementById('headerSiswa').textContent = `${session.nama} (${session.username}) - ${session.kelas}`;
+        if (result.success) {
+          let rawData = result.data;
 
-          sisaDetik = (result.durasiMenit || session.durasiMenit || 60) * 60;
-          mulaiTimer();
-          renderGridNavigasi();
-          tampilkanSoal(0);
-          kirimHeartbeat();
+          // 1. Pisahkan antara Pilihan Ganda (PG) dan Isian Singkat
+          let soalPG = rawData.filter(q => q.tipe !== 'isian');
+          let soalIsian = rawData.filter(q => q.tipe === 'isian');
+
+          // 2. Acak masing-masing kelompok soal secara independen
+          let randomizedPG = shuffleArray(soalPG).map(q => ({
+            ...q,
+            opsi: shuffleArray(q.opsi) // Acak urutan pilihan ganda A, B, C, D
+          }));
+          let randomizedIsian = shuffleArray(soalIsian);
+
+          // 3. Gabungkan kembali (PG di atas, Isian di bawah - atau sesuai kebutuhan)
+          soalUjian = [...randomizedPG, ...randomizedIsian];
+
+          renderSoal();
+          mulaiTimer(result.durasiMenit || 60);
           mulaiHeartbeat();
         } else {
-          alert(result.message || 'Belum ada soal yang tersedia untuk token ini.');
+          alert(result.message || 'Gagal memuat soal.');
           window.location.href = '/index.html';
         }
       } catch (err) {
         console.error(err);
-        alert('Gagal terhubung ke server ujian.');
+        alert('Terjadi kesalahan saat memuat soal ujian.');
       }
     }
 
-    function tampilkanSoal(index) {
-      currentIndex = index;
-      const soal = soalList[index];
-      if (!soal) return;
+    // Render Soal ke Layar (Dipisah Bagian PG & Isian Singkat agar rapi)
+    function renderSoal() {
+      const container = document.getElementById('soalContainer');
+      container.innerHTML = '';
 
-      document.getElementById('nomorSoalLabel').textContent = `Soal No. ${index + 1} dari ${soalList.length}`;
-      document.getElementById('teksPertanyaan').textContent = soal.pertanyaan || '';
-
-      const containerGambar = document.getElementById('containerGambarSoal');
-      const imgSoal = document.getElementById('gambarSoal');
-      if (soal.gambar_soal && soal.gambar_soal.trim() !== '') {
-        imgSoal.src = soal.gambar_soal;
-        containerGambar.classList.remove('hidden');
-      } else {
-        imgSoal.src = '';
-        containerGambar.classList.add('hidden');
+      if (soalUjian.length === 0) {
+        container.innerHTML = '<div class="bg-white p-6 rounded-2xl text-center text-slate-500">Tidak ada soal untuk ujian ini.</div>';
+        return;
       }
 
-      const optionsContainer = document.getElementById('optionsContainer');
-      optionsContainer.innerHTML = '';
+      soalUjian.forEach((q, index) => {
+        let inputHTML = '';
 
-      if (Array.isArray(soal.opsi)) {
-        soal.opsi.forEach((opt, idx) => {
-          const labelHuruf = String.fromCharCode(65 + idx);
-          const keyAsli = (opt && typeof opt === 'object' && opt.key) ? opt.key.toUpperCase() : labelHuruf;
-          const isiOpsi = (opt && typeof opt === 'object') ? (opt.text || '') : String(opt || '');
-          const gambarOpsi = (opt && typeof opt === 'object') ? (opt.image || '') : '';
-
-          if (!isiOpsi.trim() && !gambarOpsi.trim()) return;
-
-          const isSelected = jawabanSiswa[soal.id] === keyAsli;
-
-          const label = document.createElement('label');
-          label.className = `flex items-start gap-3 p-3.5 rounded-2xl border cursor-pointer transition ${
-            isSelected 
-              ? 'bg-emerald-50 border-emerald-500 text-emerald-950 font-semibold shadow-sm' 
-              : 'bg-slate-50 border-slate-200 hover:bg-white text-slate-700'
-          }`;
-
-          label.innerHTML = `
-            <input type="radio" name="pilihanSoal" value="${keyAsli}" ${isSelected ? 'checked' : ''} 
-              onchange="pilihJawaban('${soal.id}', '${keyAsli}')" class="mt-1 accent-emerald-600">
-            <span class="w-6 font-bold text-emerald-700 shrink-0">${labelHuruf}.</span>
-            <div class="flex-1 space-y-2">
-              ${isiOpsi ? `<p class="text-xs md:text-sm leading-relaxed">${isiOpsi}</p>` : ''}
-              ${gambarOpsi ? `<img src="${gambarOpsi}" alt="Gambar Opsi ${labelHuruf}" class="max-h-40 rounded-xl border border-slate-200 object-contain">` : ''}
+        if (q.tipe === 'isian') {
+          // Render Kotak Input untuk Isian Singkat
+          inputHTML = `
+            <div class="mt-3">
+              <input type="text" placeholder="Ketik jawaban singkat di sini..." 
+                value="${jawabanSiswa[q.id] || ''}"
+                oninput="simpanJawaban('${q.id}', this.value)"
+                class="w-full sm:w-1/2 p-3 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-none transition">
             </div>
           `;
-          optionsContainer.appendChild(label);
-        });
-      }
-
-      document.getElementById('btnPrev').disabled = currentIndex === 0;
-      const btnNext = document.getElementById('btnNext');
-      if (currentIndex === soalList.length - 1) {
-        btnNext.textContent = 'Soal Terakhir';
-        btnNext.disabled = true;
-        btnNext.classList.add('opacity-50', 'pointer-events-none');
-      } else {
-        btnNext.textContent = 'Selanjutnya →';
-        btnNext.disabled = false;
-        btnNext.classList.remove('opacity-50', 'pointer-events-none');
-      }
-      
-      updateGridNavigasiWarna();
-    }
-
-    function pilihJawaban(idSoal, keyAsli) {
-      jawabanSiswa[idSoal] = keyAsli;
-      tampilkanSoal(currentIndex);
-    }
-
-    function navigasiSoal(arah) {
-      const target = currentIndex + arah;
-      if (target >= 0 && target < soalList.length) {
-        tampilkanSoal(target);
-      }
-    }
-
-    function renderGridNavigasi() {
-      const grid = document.getElementById('gridNavSoal');
-      grid.innerHTML = '';
-      soalList.forEach((soal, idx) => {
-        const btn = document.createElement('button');
-        btn.id = `nav-btn-${idx}`;
-        btn.type = 'button';
-        btn.textContent = idx + 1;
-        btn.onclick = () => tampilkanSoal(idx);
-        grid.appendChild(btn);
-      });
-      updateGridNavigasiWarna();
-    }
-
-    function updateGridNavigasiWarna() {
-      soalList.forEach((soal, idx) => {
-        const btn = document.getElementById(`nav-btn-${idx}`);
-        if (!btn) return;
-        const sudahDijawab = Boolean(jawabanSiswa[soal.id]);
-        
-        if (idx === currentIndex) {
-          btn.className = `h-9 rounded-xl text-xs font-bold border-2 border-emerald-600 transition ${
-            sudahDijawab ? 'bg-emerald-600 text-white' : 'bg-white text-emerald-700'
-          }`;
-        } else if (sudahDijawab) {
-          btn.className = 'h-9 rounded-xl text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 transition';
         } else {
-          btn.className = 'h-9 rounded-xl text-xs font-bold bg-slate-50 text-slate-500 border border-slate-200 hover:bg-slate-100 transition';
+          // Render Pilihan Ganda (Radio Button)
+          inputHTML = `<div class="space-y-2 mt-3">` + q.opsi.map(opt => {
+            const isChecked = jawabanSiswa[q.id] === opt.key ? 'checked' : '';
+            return `
+              <label class="flex items-start gap-3 p-3 bg-slate-50 hover:bg-emerald-50/50 border border-slate-200 rounded-xl cursor-pointer transition">
+                <input type="radio" name="soal_${q.id}" value="${opt.key}" ${isChecked} onchange="simpanJawaban('${q.id}', '${opt.key}')" class="mt-0.5 text-emerald-600 focus:ring-emerald-500">
+                <span class="text-xs text-slate-700 font-medium"><b>${opt.key}.</b> ${opt.text}</span>
+              </label>
+            `;
+          }).join('') + `</div>`;
         }
+
+        const card = document.createElement('div');
+        card.className = 'bg-white p-5 sm:p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4';
+        card.innerHTML = `
+          <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+            <span class="text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full">Soal No. ${index + 1} (${q.tipe === 'isian' ? 'Isian Singkat' : 'Pilihan Ganda'})</span>
+          </div>
+          <div class="text-xs sm:text-sm text-slate-800 font-medium leading-relaxed">
+            ${q.pertanyaan}
+          </div>
+          ${q.gambar_soal ? `<div class="my-2"><img src="${q.gambar_soal}" class="max-h-48 rounded-xl border border-slate-200 object-contain"></div>` : ''}
+          ${inputHTML}
+        `;
+        container.appendChild(card);
       });
     }
 
-    function mulaiTimer() {
-      updateTampilanTimer();
+    // Simpan Jawaban Sementara Siswa
+    function simpanJawaban(idSoal, nilai) {
+      jawabanSiswa[idSoal] = nilai;
+    }
+
+    // Timer Mundur Ujian
+    function mulaiTimer(durasiMenit) {
+      let totalDetik = durasiMenit * 60;
       timerInterval = setInterval(() => {
-        if (sisaDetik <= 0) {
+        if (totalDetik <= 0) {
           clearInterval(timerInterval);
-          alert('Waktu ujian telah habis! Jawaban Anda akan dikirim otomatis.');
-          kirimJawabanUjian();
+          alert('Waktu ujian telah habis! Ujian akan dikumpulkan otomatis.');
+          submitUjian();
           return;
         }
-        sisaDetik--;
-        updateTampilanTimer();
+        totalDetik--;
+        let jam = Math.floor(totalDetik / 3600);
+        let menit = Math.floor((totalDetik % 3600) / 60);
+        let detik = totalDetik % 60;
+        document.getElementById('timer').textContent = 
+          `${String(jam).padStart(2, '0')}:${String(menit).padStart(2, '0')}:${String(detik).padStart(2, '0')}`;
       }, 1000);
     }
 
-    function updateTampilanTimer() {
-      const jam = Math.floor(sisaDetik / 3600).toString().padStart(2, '0');
-      const menit = Math.floor((sisaDetik % 3600) / 60).toString().padStart(2, '0');
-      const detik = (sisaDetik % 60).toString().padStart(2, '0');
-      document.getElementById('timerDisplay').textContent = `${jam}:${menit}:${detik}`;
+    // Anti-Cheat & Heartbeat
+    function mulaiHeartbeat() {
+      // Deteksi keluar tab / minimize browser
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+          warnings++;
+          document.getElementById('warningBanner').classList.remove('hidden');
+          document.getElementById('warningCount').textContent = warnings;
+          
+          if (warnings >= 3) {
+            alert('Anda telah keluar halaman sebanyak 3 kali. Ujian otomatis dikumpulkan!');
+            submitUjian();
+          }
+        }
+      });
+
+      heartbeatInterval = setInterval(async () => {
+        try {
+          const answeredCount = Object.keys(jawabanSiswa).length;
+          const res = await fetch('/api/ujian/heartbeat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              username: session.username,
+              nama: session.nama,
+              kelas: session.kelas,
+              mapel: session.mapel,
+              answeredCount,
+              totalQuestions: soalUjian.length,
+              warnings,
+              status: 'Mengerjakan'
+            })
+          });
+          const data = await res.json();
+          if (data.forceSubmit) {
+            alert(data.message || 'Ujian dihentikan oleh sistem.');
+            submitUjian();
+          }
+        } catch (e) {
+          console.error('Heartbeat error:', e);
+        }
+      }, 10000);
     }
 
-    function konfirmasiSelesai() {
-      const terjawab = Object.keys(jawabanSiswa).length;
-      const total = soalList.length;
-      const belumTerjawab = total - terjawab;
-
-      let pesan = `Anda telah menjawab ${terjawab} dari ${total} soal.`;
-      if (belumTerjawab > 0) {
-        pesan += `\nPerhatian: Masih ada ${belumTerjawab} soal yang belum dijawab!`;
-      }
-      pesan += `\nYakin ingin mengakhiri dan mengirim jawaban?`;
-
-      if (confirm(pesan)) {
-        kirimJawabanUjian();
+    function konfirmasiSubmit() {
+      const terisi = Object.keys(jawabanSiswa).length;
+      if (confirm(`Anda telah menjawab ${terisi} dari ${soalUjian.length} soal. Yakin ingin mengumpulkan ujian sekarang?`)) {
+        submitUjian();
       }
     }
 
-    // Kirim Jawaban & Tampilkan Kartu Modal Modern
-    async function kirimJawabanUjian() {
-      isSubmitting = true;
+    async function submitUjian() {
       clearInterval(timerInterval);
       clearInterval(heartbeatInterval);
-
-      const btnSubmit = document.getElementById('btnSubmitUjian');
-      btnSubmit.disabled = true;
-      btnSubmit.textContent = 'Mengirim Jawaban...';
-      
-      const payload = {
-        nama: session.nama,
-        username: session.username,
-        kelas: session.kelas,
-        mapel: session.mapel,
-        jawabanSiswa: jawabanSiswa
-      };
 
       try {
         const res = await fetch('/api/submit', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
+          body: JSON.stringify({
+            nama: session.nama,
+            username: session.username,
+            kelas: session.kelas,
+            mapel: session.mapel,
+            jawabanSiswa
+          })
         });
         const result = await res.json();
 
         if (result.success) {
-          // Isi data ke Modal Rekap Modern
-          document.getElementById('resNama').textContent = session.nama;
-          document.getElementById('resUsername').textContent = session.username;
-          document.getElementById('resKelasMapel').textContent = `${session.kelas} - ${session.mapel}`;
-          document.getElementById('resWaktu').textContent = new Date().toLocaleString('id-ID');
-          document.getElementById('resBenar').textContent = `${result.benar} dari ${result.totalSoal} Soal`;
-          document.getElementById('resNilai').textContent = result.nilai;
-
-          // Keluar dari fullscreen agar siswa leluasa mendownload PDF
-          if (document.exitFullscreen) {
-            document.exitFullscreen().catch(() => {});
-          }
-
-          // Munculkan Modal Hasil Modern
-          document.getElementById('modalHasil').classList.remove('hidden');
+          alert(`Ujian Berhasil Dikumpulkan!\nNilai Anda: ${result.nilai} (Benar ${result.benar} dari ${result.totalSoal} soal).`);
+          localStorage.removeItem('cbt_session');
+          window.location.href = '/index.html';
         } else {
-          alert('Gagal mengirim jawaban: ' + (result.message || 'Kesalahan server'));
-          isSubmitting = false;
-          btnSubmit.disabled = false;
-          btnSubmit.textContent = 'Akhiri & Kirim Ujian';
+          alert('Gagal mengirim jawaban: ' + (result.message || 'Terjadi kesalahan.'));
         }
       } catch (err) {
+        console.error(err);
         alert('Gagal terhubung ke server saat mengirim jawaban.');
-        isSubmitting = false;
-        btnSubmit.disabled = false;
-        btnSubmit.textContent = 'Akhiri & Kirim Ujian';
       }
     }
 
-    // Fungsi Download Bukti Nilai ke PDF
-    function downloadPDF() {
-      const element = document.getElementById('areaSertifikatNilai');
-      const opt = {
-        margin:       10,
-        filename:     `Bukti_Nilai_${session.nama.replace(/\s+/g, '_')}_${session.mapel.replace(/\s+/g, '_')}.pdf`,
-        image:        { type: 'jpeg', quality: 0.98 },
-        html2canvas:  { scale: 2, useCORS: true },
-        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
-      };
-
-      html2pdf().from(element).set(opt).save();
-    }
-
-    function selesaiDanKeluar() {
-      localStorage.removeItem('cbt_session');
-      sessionStorage.removeItem('cbt_session');
-      window.location.href = '/index.html';
-    }
-
-    function kirimHeartbeat() {
-      if (!session) return;
-      fetch('/api/ujian/heartbeat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          username: session.username,
-          nama: session.nama,
-          kelas: session.kelas,
-          mapel: session.mapel,
-          answeredCount: Object.keys(jawabanSiswa).length,
-          totalQuestions: soalList.length,
-          warnings: warningCount,
-          status: 'Mengerjakan'
-        })
-      }).catch(() => {});
-    }
-
-    function mulaiHeartbeat() {
-      heartbeatInterval = setInterval(kirimHeartbeat, 15000);
-    }
-
-    muatSoalUjian();
+    // Jalankan pemuatan soal saat halaman dibuka
+    muatSoal();
   </script>
 </body>
 </html>
