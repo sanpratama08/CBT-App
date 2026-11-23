@@ -4,19 +4,34 @@
 
 const { google } = require('googleapis');
 const path = require('path');
+const fs = require('fs');
 require('dotenv').config();
 
-const KEYFILEPATH = path.join(__dirname, 'credentials.json');
 const SCOPES = ['https://www.googleapis.com/auth/spreadsheets'];
+const KEYFILEPATH = path.join(__dirname, 'credentials.json');
 
-const auth = new google.auth.GoogleAuth({
-  keyFile: KEYFILEPATH,
-  scopes: SCOPES,
-});
+let auth;
+
+// Prioritaskan membaca dari Environment Variable (untuk Vercel / Production)
+if (process.env.GOOGLE_CREDENTIALS) {
+  const credentials = JSON.parse(process.env.GOOGLE_CREDENTIALS);
+  auth = new google.auth.GoogleAuth({
+    credentials,
+    scopes: SCOPES,
+  });
+} else if (fs.existsSync(KEYFILEPATH)) {
+  // Fallback ke file lokal jika dijalankan di komputer (localhost)
+  auth = new google.auth.GoogleAuth({
+    keyFile: KEYFILEPATH,
+    scopes: SCOPES,
+  });
+} else {
+  throw new Error("Kredensial Google tidak ditemukan! Pasang GOOGLE_CREDENTIALS di Vercel atau sediakan credentials.json di lokal.");
+}
 
 function getSpreadsheetId() {
   const id = process.env.GOOGLE_SHEET_ID;
-  if (!id) throw new Error("GOOGLE_SHEET_ID belum terpasang di file .env!");
+  if (!id) throw new Error("GOOGLE_SHEET_ID belum terpasang di Environment Variables!");
   return id;
 }
 
