@@ -495,13 +495,32 @@ app.post('/api/ujian/start', async (req, res) => {
     }
 
     let randomized = shuffleArray(filteredQuestions);
-    randomized = randomized.map(q => ({
-      id: q.id,
-      pertanyaan: q.pertanyaan,
-      gambar_soal: q.gambar_soal || '',
-      opsi: shuffleArray(q.opsi)
-    }));
+    randomized = randomized.map(q => {
+      if (q.tipe === 'isian') {
+        return {
+          id: q.id,
+          pertanyaan: q.pertanyaan,
+          tipe: 'isian',
+          gambar_soal: q.gambar_soal || '',
+          opsi: []
+        };
+      } else {
+        let shuffledOpsiTexts = shuffleArray(q.opsi);
+        let labeledOpsi = shuffledOpsiTexts.map((opt, idx) => ({
+          key: ['A', 'B', 'C', 'D'][idx],
+          text: opt.text,
+          image: opt.image
+        }));
 
+        return {
+          id: q.id,
+          pertanyaan: q.pertanyaan,
+          tipe: 'pg',
+          gambar_soal: q.gambar_soal || '',
+          opsi: labeledOpsi
+        };
+      }
+    });
     res.json({ 
       success: true, 
       total: randomized.length, 

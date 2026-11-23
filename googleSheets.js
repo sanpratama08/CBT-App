@@ -68,23 +68,24 @@ async function getQuestionsFromSheet(sheetName = 'Soal') {
     return rows
       .filter((row) => row[0] && row[1])
       .map((row) => {
-        // Kolom J (index 9) dapat diisi 'isian' atau 'pg' secara manual di spreadsheet
-        const explicitType = (row[9] || '').trim().toLowerCase();
-        const opsiA = row[2] || '';
-        const opsiB = row[3] || '';
+        const opsiA = (row[2] || '').trim();
+        const opsiB = (row[3] || '').trim();
+        const opsiC = (row[4] || '').trim();
+        const opsiD = (row[5] || '').trim();
         
-        // Jika kolom J diisi 'isian' atau jika opsi A & B kosong / '-'
-        const isIsian = explicitType === 'isian' || ((!opsiA || opsiA === '-') && (!opsiB || opsiB === '-'));
+        // Deteksi apakah soal ini Isian Singkat
+        const isIsian = (!opsiA || opsiA === '-' || opsiA === '') && 
+                        (!opsiB || opsiB === '-' || opsiB === '');
 
         return {
           id: row[0],
           pertanyaan: row[1] || '',
           tipe: isIsian ? 'isian' : 'pg',
           opsi: isIsian ? [] : [
-            { key: 'A', text: row[2] || '', image: normalizeImageUrl(row[10]) },
-            { key: 'B', text: row[3] || '', image: normalizeImageUrl(row[11]) },
-            { key: 'C', text: row[4] || '', image: normalizeImageUrl(row[12]) },
-            { key: 'D', text: row[5] || '', image: normalizeImageUrl(row[13]) }
+            { text: opsiA, image: normalizeImageUrl(row[10]) },
+            { text: opsiB, image: normalizeImageUrl(row[11]) },
+            { text: opsiC, image: normalizeImageUrl(row[12]) },
+            { text: opsiD, image: normalizeImageUrl(row[13]) }
           ],
           jawaban_benar: row[6] || '',
           kelas: row[7] || 'Umum',
