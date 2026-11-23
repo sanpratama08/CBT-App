@@ -3,871 +3,216 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Admin Dashboard - CBT SDIT NURUSSIROJ</title>
+  <title>Panel Admin - CBT SDIT NURUSSIROJ</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-  
-  <!-- Pustaka html2pdf untuk cetak rekap admin ke PDF -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <!-- Google Fonts Modern: Inter & Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    h1, h2, h3, h4, .font-heading { font-family: 'Plus Jakarta Sans', sans-serif; }
+  </style>
 </head>
-<body class="bg-slate-100 font-sans text-slate-800 antialiased min-h-screen flex">
+<body class="bg-slate-50 text-slate-800 antialiased min-h-screen pb-12">
 
-  <!-- SIDEBAR NAVIGASI KIRI -->
-  <aside id="sidebar" class="w-64 bg-slate-900 text-slate-300 flex flex-col transition-all duration-300 z-30 shrink-0 relative">
-    
-    <!-- HEADER LOGO & TOMBOL TOGGLE DENGAN GAMBAR -->
-    <div class="p-4 border-b border-slate-800 flex flex-col gap-3">
-      <div class="flex items-center justify-between">
-        <div class="flex items-center gap-3 min-w-0">
-          <img src="/images/logo.png" alt="Logo Sekolah" class="w-10 h-10 object-contain rounded-xl bg-white p-1 shadow-md shrink-0">
-          <div class="sidebar-text whitespace-nowrap overflow-hidden">
-            <h1 class="font-bold text-white text-xs tracking-wide">SDIT NURUSSIROJ</h1>
-            <p class="text-[10px] text-slate-400">Panel Administrator</p>
-          </div>
-        </div>
+  <!-- NAVBAR / HEADER ADMIN -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
+      <div>
+        <h1 class="text-lg sm:text-xl font-extrabold text-slate-900 tracking-tight">CBT Admin Dashboard</h1>
+        <p class="text-[11px] sm:text-xs text-slate-500 font-medium">SDIT Nurussiroj • Manajemen Ujian & Token Berkala</p>
       </div>
-      
-      <!-- Tombol Sembunyikan Menu -->
-      <button onclick="toggleSidebar()" class="w-full bg-slate-800/80 hover:bg-slate-800 text-slate-400 hover:text-white py-1.5 px-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition" title="Lipat / Buka Sidebar">
-        <svg id="toggleIcon" class="w-4 h-4 transition-transform duration-300 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"></path>
-        </svg>
-        <span class="sidebar-text text-[11px]">Sembunyikan Menu</span>
-      </button>
-    </div>
 
-    <!-- MENU NAVIGASI -->
-    <nav class="flex-1 p-3 space-y-1.5 overflow-y-auto overflow-x-hidden">
-      <a href="#" onclick="switchTab('beranda')" id="nav-beranda" class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold bg-blue-600 text-white shadow-sm transition group relative">
-        <span class="text-base shrink-0">🏠</span> 
-        <span class="sidebar-text whitespace-nowrap">Beranda Utama</span>
-      </a>
-      <a href="#" onclick="switchTab('monitoring')" id="nav-monitoring" class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold hover:bg-slate-800 hover:text-white transition group relative">
-        <span class="text-base shrink-0">📡</span> 
-        <span class="sidebar-text whitespace-nowrap">Monitoring Siswa</span>
-      </a>
-      <a href="#" onclick="switchTab('token')" id="nav-token" class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold hover:bg-slate-800 hover:text-white transition group relative">
-        <span class="text-base shrink-0">🔑</span> 
-        <span class="sidebar-text whitespace-nowrap">Token & Jadwal</span>
-      </a>
-      <a href="#" onclick="switchTab('soal')" id="nav-soal" class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold hover:bg-slate-800 hover:text-white transition group relative">
-        <span class="text-base shrink-0">📚</span> 
-        <span class="sidebar-text whitespace-nowrap">Bank Soal & Import</span>
-      </a>
-      <a href="#" onclick="switchTab('rekap')" id="nav-rekap" class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold hover:bg-slate-800 hover:text-white transition group relative">
-        <span class="text-base shrink-0">🏆</span> 
-        <span class="sidebar-text whitespace-nowrap">Rekap & Cetak Nilai</span>
-      </a>
-    </nav>
-
-    <div class="p-3 border-t border-slate-800 text-[10px] text-slate-500 text-center sidebar-text whitespace-nowrap overflow-hidden">
-      CBT v3.5 • Nurussiroj
-    </div>
-  </aside>
-
-  <!-- KONTEN UTAMA -->
-  <main class="flex-1 flex flex-col min-w-0 overflow-hidden">
-    
-    <!-- TOP HEADER -->
-    <header class="bg-white border-b border-slate-200 px-6 py-3.5 flex items-center justify-between shrink-0 shadow-xs">
-      <div class="flex items-center gap-4">
-        <h2 id="pageTitle" class="text-base font-bold text-slate-800">Beranda Utama</h2>
-      </div>
+      <!-- PROFIL ADMIN & FOTO -->
       <div class="flex items-center gap-3">
         <div class="text-right hidden sm:block">
-          <p class="text-xs font-bold text-slate-700">Administrator</p>
-          <p class="text-[10px] text-emerald-600 font-semibold">● Sistem Online</p>
+          <div class="font-bold text-slate-800 text-sm">Sandi Ali Pratama</div>
+          <div class="text-[11px] text-emerald-600 font-medium flex items-center justify-end gap-1.5">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+            Sistem Online
+          </div>
         </div>
-        <div class="bg-slate-200 w-9 h-9 rounded-full flex items-center justify-center font-bold text-slate-600 text-xs">
-          AD
+        <!-- Foto Profil Admin -->
+        <div class="w-10 h-10 rounded-full overflow-hidden border border-slate-300 shadow-sm bg-slate-100 flex items-center justify-center">
+          <img src="/images/admin.jpg" alt="Foto Admin" class="w-full h-full object-cover">
         </div>
       </div>
-    </header>
+    </div>
+  </header>
 
-    <!-- AREA WORKSPACE -->
-    <div class="flex-1 overflow-y-auto p-6">
+  <!-- KONTEN UTAMA DASHBOARD -->
+  <main class="max-w-7xl mx-auto px-4 mt-6 space-y-6">
 
-      <!-- ================= TAB 1: BERANDA ================= -->
-      <section id="tab-beranda" class="space-y-6">
-        <div class="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-2xl p-6 text-white shadow-md flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+    <!-- BAGIAN 1: KELOLA TOKEN BERKALA -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      
+      <!-- Form Buat Token -->
+      <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 space-y-4">
+        <h2 class="font-heading font-bold text-sm text-slate-900 flex items-center gap-2 border-b border-slate-100 pb-3">
+          <span>🔑</span> Buat / Update Token Berkala
+        </h2>
+        
+        <form id="formToken" class="space-y-3.5">
           <div>
-            <span class="bg-blue-500/50 text-blue-100 text-[11px] font-bold px-3 py-1 rounded-full uppercase tracking-wider">Dashboard CBT</span>
-            <h3 class="text-xl font-bold mt-2">Selamat Datang, Panitia Ujian!</h3>
-            <p class="text-xs text-blue-100 mt-1">Sistem Ujian Berbasis Komputer SDIT Nurussiroj siap digunakan untuk mengelola ujian serentak.</p>
-          </div>
-          <div class="bg-white/10 backdrop-blur-md px-4 py-3 rounded-xl border border-white/20 text-right">
-            <p class="text-[11px] text-blue-100">Waktu Server Aktif</p>
-            <p id="clockLive" class="text-sm font-mono font-bold">--:--:-- WIB</p>
-          </div>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div onclick="switchTab('monitoring')" class="bg-gradient-to-br from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 text-white rounded-3xl p-7 shadow-md cursor-pointer transition flex flex-col justify-between group">
-            <div>
-              <div class="flex justify-between items-center mb-4">
-                <span class="text-xs bg-white/20 px-3 py-1 rounded-full font-bold uppercase tracking-wider">Live Monitoring</span>
-                <span class="text-xs text-blue-100">Status Ujian Real-Time</span>
-              </div>
-              <div class="flex items-baseline gap-3 my-2">
-                <span id="bigCountSiswa" class="text-5xl font-mono font-extrabold tracking-tight">0</span>
-                <span class="text-lg font-semibold text-blue-100">Siswa Sedang Ujian</span>
-              </div>
-              <p class="text-xs text-blue-100 mt-2">Pantau aktivitas pengerjaan dan deteksi peringatan pelanggaran siswa secara langsung.</p>
-            </div>
-            <div class="mt-6 flex items-center gap-1.5 text-xs font-bold text-white group-hover:translate-x-1.5 transition">
-              <span>Buka Panel Monitoring</span> <span>→</span>
-            </div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Jenjang Kelas</label>
+            <input type="text" id="kelasToken" placeholder="Contoh: Kelas 5" required 
+              class="w-full px-3 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-none">
           </div>
 
-          <div onclick="switchTab('rekap')" class="bg-gradient-to-br from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white rounded-3xl p-7 shadow-md cursor-pointer transition flex flex-col justify-between group">
-            <div>
-              <div class="flex justify-between items-center mb-4">
-                <span class="text-xs bg-white/20 px-3 py-1 rounded-full font-bold uppercase tracking-wider">Hasil & Rekap</span>
-                <span class="text-xs text-emerald-100">Database Nilai</span>
-              </div>
-              <div class="flex items-baseline gap-3 my-2">
-                <span id="bigCountHasil" class="text-5xl font-mono font-extrabold tracking-tight">0</span>
-                <span class="text-lg font-semibold text-emerald-100">Siswa Telah Selesai</span>
-              </div>
-              <p class="text-xs text-emerald-100 mt-2">Akses rekapitulasi nilai, export ke Excel, cetak laporan kelas, dan cetak bukti hasil.</p>
-            </div>
-            <div class="mt-6 flex items-center gap-1.5 text-xs font-bold text-white group-hover:translate-x-1.5 transition">
-              <span>Buka Rekap & Cetak Nilai</span> <span>→</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div class="lg:col-span-2 bg-white rounded-2xl p-5 shadow-xs border border-slate-200">
-            <h4 class="font-bold text-slate-800 text-sm mb-4 flex items-center gap-2">
-              <span>📢</span> Aktivitas & Log Ujian Terbaru
-            </h4>
-            <div id="liveActivityFeed" class="space-y-3">
-              <p class="text-xs text-slate-400 py-4 text-center">Memuat aktivitas siswa...</p>
-            </div>
-          </div>
-
-          <div class="bg-white rounded-2xl p-5 shadow-xs border border-slate-200 flex flex-col justify-between">
-            <div>
-              <h4 class="font-bold text-slate-800 text-sm mb-3">💡 Panduan Cepat</h4>
-              <ul class="text-xs space-y-2 text-slate-600">
-                <li class="flex items-start gap-2"><span>•</span> Buat token terlebih dahulu di menu <strong>Token & Jadwal</strong> sebelum ujian dimulai.</li>
-                <li class="flex items-start gap-2"><span>•</span> Gunakan menu <strong>Monitoring</strong> untuk melihat siswa yang selesai atau terkena peringatan.</li>
-                <li class="flex items-start gap-2"><span>•</span> Tombol cetak PDF laporan dipusatkan di menu <strong>Rekap Nilai</strong>.</li>
-              </ul>
-            </div>
-            <div class="mt-4 pt-3 border-t border-slate-100 text-[11px] text-slate-400 text-center">
-              SDIT Nurussiroj CBT System
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- ================= TAB 2: MONITORING SISWA ================= -->
-      <section id="tab-monitoring" class="hidden space-y-6">
-        <div class="bg-white rounded-2xl p-5 shadow-xs border border-slate-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <h3 class="font-bold text-slate-800 text-sm">Monitoring Ujian Real-Time</h3>
-            <p class="text-xs text-slate-500">Memantau status pengerjaan siswa dan peringatan pelanggaran (pindah tab).</p>
-          </div>
-          <div class="flex items-center gap-2 w-full sm:w-auto">
-            <select id="filterMonitoringKelas" onchange="loadMonitoring()" class="px-3 py-1.5 text-xs border border-slate-300 rounded-xl bg-white font-semibold text-slate-700">
-              <option value="semua">Semua Kelas</option>
-            </select>
-            <button onclick="resetMonitoring()" class="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 font-semibold px-3 py-1.5 rounded-xl text-xs transition">
-              Reset Log
-            </button>
-          </div>
-        </div>
-
-        <div class="bg-white rounded-2xl shadow-xs border border-slate-200 overflow-hidden">
-          <div class="overflow-x-auto">
-            <table class="w-full text-left text-xs">
-              <thead class="bg-slate-50 text-slate-600 font-bold border-b border-slate-200">
-                <tr>
-                  <th class="py-3 px-4">Nama Siswa</th>
-                  <th class="py-3 px-4">Kelas</th>
-                  <th class="py-3 px-4">Mata Pelajaran</th>
-                  <th class="py-3 px-4">Progress Soal</th>
-                  <th class="py-3 px-4 text-center">Peringatan</th>
-                  <th class="py-3 px-4 text-center">Status</th>
-                  <th class="py-3 px-4 text-right">Terakhir Update</th>
-                </tr>
-              </thead>
-              <tbody id="tbodyMonitoring" class="divide-y divide-slate-100">
-                <tr><td colspan="7" class="py-8 text-center text-slate-400">Memuat data monitoring...</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </section>
-
-      <!-- ================= TAB 3: TOKEN & JADWAL ================= -->
-      <section id="tab-token" class="hidden space-y-6">
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div class="bg-white rounded-2xl p-5 shadow-xs border border-slate-200">
-            <h3 class="font-bold text-slate-800 text-sm mb-4">🔑 Buat / Update Token Ujian</h3>
-            <form id="formConfig" class="space-y-4">
-              <div>
-                <label class="block text-xs font-semibold text-slate-700 mb-1">Jenjang Kelas</label>
-                <input type="text" id="configKelas" placeholder="Contoh: Kelas 5" required class="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none">
-              </div>
-              <div>
-                <label class="block text-xs font-semibold text-slate-700 mb-1">Mata Pelajaran</label>
-                <input type="text" id="configMapel" placeholder="Contoh: Matematika" required class="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none">
-              </div>
-              <div>
-                <label class="block text-xs font-semibold text-slate-700 mb-1">Kode Token Ujian</label>
-                <input type="text" id="configToken" placeholder="Contoh: KLS5MTK" required class="w-full px-3 py-2 text-xs font-mono font-bold uppercase border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none">
-              </div>
-              <div>
-                <label class="block text-xs font-semibold text-slate-700 mb-1">Durasi Ujian (Menit)</label>
-                <input type="number" id="configDurasi" value="60" min="10" required class="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none">
-              </div>
-              <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-xl text-xs transition shadow-sm">
-                Simpan Token Permanen
-              </button>
-            </form>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Mata Pelajaran</label>
+            <input type="text" id="mapelToken" placeholder="Contoh: Matematika" required 
+              class="w-full px-3 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-none">
           </div>
 
-          <div class="lg:col-span-2 bg-white rounded-2xl p-5 shadow-xs border border-slate-200">
-            <h3 class="font-bold text-slate-800 text-sm mb-4">📋 Daftar Token Ujian Aktif</h3>
-            <div class="overflow-x-auto">
-              <table class="w-full text-left text-xs">
-                <thead class="bg-slate-50 text-slate-600 font-bold border-b border-slate-200">
-                  <tr>
-                    <th class="py-2.5 px-3">Kelas</th>
-                    <th class="py-2.5 px-3">Mata Pelajaran</th>
-                    <th class="py-2.5 px-3">Token</th>
-                    <th class="py-2.5 px-3">Durasi</th>
-                    <th class="py-2.5 px-3 text-center">Aksi</th>
-                  </tr>
-                </thead>
-                <tbody id="tbodyConfigs" class="divide-y divide-slate-100">
-                  <tr><td colspan="5" class="py-6 text-center text-slate-400">Memuat konfigurasi...</td></tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- ================= TAB 4: BANK SOAL ================= -->
-      <section id="tab-soal" class="hidden space-y-6">
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div class="space-y-6">
-            <div class="bg-white rounded-2xl p-5 shadow-xs border border-slate-200">
-              <h3 class="font-bold text-slate-800 text-sm mb-4">➕ Tambah Soal Manual</h3>
-              
-              <!-- FORM TAMBAH SOAL (Mendukung Pilihan Ganda & Isian Singkat) -->
-              <form id="formSoal" class="space-y-3">
-                <div class="grid grid-cols-2 gap-2">
-                  <div>
-                    <label class="block text-[11px] font-semibold text-slate-700 mb-1">Kelas</label>
-                    <input type="text" id="inputKelas" placeholder="Kelas 5" required class="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-xl">
-                  </div>
-                  <div>
-                    <label class="block text-[11px] font-semibold text-slate-700 mb-1">Mapel</label>
-                    <input type="text" id="inputMapel" placeholder="Matematika" required class="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-xl">
-                  </div>
-                </div>
-
-                <!-- PILIHAN TIPE SOAL -->
-                <div>
-                  <label class="block text-[11px] font-semibold text-slate-700 mb-1">Tipe Soal</label>
-                  <select id="inputTipeSoal" onchange="toggleTipeSoal(this.value)" class="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-xl bg-white">
-                    <option value="pg">Pilihan Ganda</option>
-                    <option value="isian">Isian Singkat</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label class="block text-[11px] font-semibold text-slate-700 mb-1">Pertanyaan</label>
-                  <textarea id="inputPertanyaan" rows="3" placeholder="Tulis soal di sini..." required class="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-xl"></textarea>
-                </div>
-
-                <!-- Opsi PG (Hanya tampil jika tipe 'pg') -->
-                <div id="containerOpsiPG" class="space-y-2">
-                  <div class="grid grid-cols-2 gap-2">
-                    <input type="text" id="inputOpsiA" placeholder="Opsi A" class="px-3 py-1.5 text-xs border border-slate-300 rounded-xl">
-                    <input type="text" id="inputOpsiB" placeholder="Opsi B" class="px-3 py-1.5 text-xs border border-slate-300 rounded-xl">
-                    <input type="text" id="inputOpsiC" placeholder="Opsi C" class="px-3 py-1.5 text-xs border border-slate-300 rounded-xl">
-                    <input type="text" id="inputOpsiD" placeholder="Opsi D" class="px-3 py-1.5 text-xs border border-slate-300 rounded-xl">
-                  </div>
-                </div>
-
-                <!-- Kunci Jawaban PG -->
-                <div id="containerKunciPG">
-                  <label class="block text-[11px] font-semibold text-slate-700 mb-1">Kunci Jawaban (A/B/C/D)</label>
-                  <select id="inputJawabanBenar" class="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-xl bg-white">
-                    <option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option>
-                  </select>
-                </div>
-
-                <!-- Kunci Jawaban Isian Singkat (Hidden awal) -->
-                <div id="containerKunciIsian" class="hidden">
-                  <label class="block text-[11px] font-semibold text-slate-700 mb-1">Kunci Jawaban Teks (Contoh: Kairo / 1945)</label>
-                  <input type="text" id="inputJawabanIsian" placeholder="Tulis jawaban benar di sini..." class="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-xl">
-                </div>
-
-                <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2 rounded-xl text-xs transition">
-                  Simpan Soal Baru
-                </button>
-              </form>
-            </div>
-
-            <div class="bg-white rounded-2xl p-5 shadow-xs border border-slate-200">
-              <h3 class="font-bold text-slate-800 text-sm mb-4">📂 Import File Excel / Word</h3>
-              <div class="space-y-4">
-                <form id="formImportExcel" class="space-y-2">
-                  <label class="block text-[11px] font-semibold text-slate-700">Import Excel (.xlsx)</label>
-                  <input type="file" id="fileExcel" accept=".xlsx" required class="w-full text-xs text-slate-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
-                  <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-1.5 rounded-xl text-xs transition">Upload Excel</button>
-                </form>
-                <form id="formImportWord" class="space-y-2 pt-3 border-t border-slate-100">
-                  <label class="block text-[11px] font-semibold text-slate-700">Import Word (.docx)</label>
-                  <input type="file" id="fileWord" accept=".docx" required class="w-full text-xs text-slate-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
-                  <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-1.5 rounded-xl text-xs transition">Upload Word</button>
-                </form>
-              </div>
-            </div>
-          </div>
-
-          <div class="lg:col-span-2 bg-white rounded-2xl p-5 shadow-xs border border-slate-200 space-y-4">
-            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-              <h3 class="font-bold text-slate-800 text-sm">📚 Daftar Bank Soal</h3>
-              <div class="flex items-center gap-2">
-                <button onclick="hapusSoalTerpilih()" class="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 font-semibold px-3 py-1.5 rounded-xl text-xs transition">
-                  🗑️ Hapus Terpilih
-                </button>
-                <button onclick="loadSoal(true)" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold px-3 py-1.5 rounded-xl text-xs transition">
-                  🔄 Refresh
-                </button>
-              </div>
-            </div>
-            <div class="overflow-x-auto">
-              <table class="w-full text-left text-xs">
-                <thead class="bg-slate-50 text-slate-600 font-bold border-b border-slate-200">
-                  <tr>
-                    <th class="py-2.5 px-3 w-8"><input type="checkbox" id="selectAllSoal" onclick="toggleSelectAll(this)"></th>
-                    <th class="py-2.5 px-3">Kelas / Mapel</th>
-                    <th class="py-2.5 px-3">Pertanyaan</th>
-                    <th class="py-2.5 px-3 text-center">Tipe / Kunci</th>
-                    <th class="py-2.5 px-3 text-right">Aksi</th>
-                  </tr>
-                </thead>
-                <tbody id="tbodySoal" class="divide-y divide-slate-100">
-                  <tr><td colspan="5" class="py-8 text-center text-slate-400">Memuat soal...</td></tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- ================= TAB 5: REKAP & CETAK NILAI ================= -->
-      <section id="tab-rekap" class="hidden space-y-6">
-        <div class="bg-white rounded-2xl p-5 shadow-xs border border-slate-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
-            <h3 class="font-bold text-slate-800 text-sm">Rekapitulasi & Cetak Hasil Ujian</h3>
-            <p class="text-xs text-slate-500">Filter rekap nilai berdasarkan kelas dan mapel, lalu export ke Excel atau Unduh PDF.</p>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Kode Token Ujian</label>
+            <input type="text" id="kodeToken" placeholder="Contoh: KLS5MTK" required 
+              class="w-full px-3 py-2.5 text-xs font-mono font-bold uppercase tracking-wider bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-none">
           </div>
-          <div class="flex flex-wrap items-center gap-2 w-full md:w-auto">
-            <select id="filterHasilKelas" onchange="loadHasil()" class="px-3 py-2 text-xs border border-slate-300 rounded-xl bg-white font-semibold text-slate-700">
-              <option value="semua">Semua Kelas</option>
-            </select>
-            <select id="filterHasilMapel" onchange="loadHasil()" class="px-3 py-2 text-xs border border-slate-300 rounded-xl bg-white font-semibold text-slate-700">
-              <option value="semua">Semua Mapel</option>
-            </select>
-            <button onclick="loadHasil()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold px-3.5 py-2 rounded-xl text-xs transition">
-              🔄 Refresh
-            </button>
-            <button onclick="exportHasilExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-3.5 py-2 rounded-xl text-xs transition shadow-sm flex items-center gap-1.5">
-              <span>📥</span> Export Excel
-            </button>
-            <button onclick="downloadRekapPDF()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-3.5 py-2 rounded-xl text-xs transition shadow-sm flex items-center gap-1.5">
-              <span>📄</span> Unduh PDF
-            </button>
-          </div>
-        </div>
 
-        <div id="areaTabelRekap" class="bg-white rounded-2xl shadow-xs border border-slate-200 overflow-hidden p-4 space-y-3">
-          <div class="hidden print:block text-center pb-2 border-b border-slate-200">
-            <h2 class="font-bold text-sm text-slate-800">REKAPITULASI NILAI UJIAN - SDIT NURUSSIROJ</h2>
-            <p id="printFilterInfo" class="text-[11px] text-slate-500">Filter: Semua Kelas | Semua Mapel</p>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Durasi Ujian (Menit)</label>
+            <input type="number" id="durasiToken" value="60" required 
+              class="w-full px-3 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-none">
           </div>
-          <div class="overflow-x-auto">
-            <table class="w-full text-left text-xs">
-              <thead class="bg-slate-50 text-slate-600 font-bold border-b border-slate-200">
-                <tr>
-                  <th class="py-3 px-4">No</th>
-                  <th class="py-3 px-4">Waktu Submit</th>
-                  <th class="py-3 px-4">Nama Siswa</th>
-                  <th class="py-3 px-4">Username / NIS</th>
-                  <th class="py-3 px-4">Kelas</th>
-                  <th class="py-3 px-4">Mapel</th>
-                  <th class="py-3 px-4 text-center">Nilai Akhir</th>
-                  <th class="py-3 px-4 text-center">Aksi Rapor</th>
-                </tr>
-              </thead>
-              <tbody id="tbodyHasil" class="divide-y divide-slate-100">
-                <tr><td colspan="8" class="py-8 text-center text-slate-400">Memuat rekap nilai...</td></tr>
-              </tbody>
-            </table>
+
+          <!-- Tambahan Jam Mulai & Jam Selesai (Token Berkala) -->
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">Jam Mulai</label>
+              <input type="time" id="jamMulaiToken" 
+                class="w-full px-3 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">Jam Selesai</label>
+              <input type="time" id="jamSelesaiToken" 
+                class="w-full px-3 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+            </div>
           </div>
+
+          <button type="submit" 
+            class="w-full bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold py-3 rounded-xl text-xs transition shadow-lg shadow-emerald-600/20 mt-2">
+            Simpan Token Berkala
+          </button>
+        </form>
+      </div>
+
+      <!-- Tabel Daftar Token Aktif -->
+      <div class="lg:col-span-2 bg-white p-6 rounded-3xl shadow-sm border border-slate-200 space-y-4">
+        <h2 class="font-heading font-bold text-sm text-slate-900 flex items-center gap-2 border-b border-slate-100 pb-3">
+          <span>📋</span> Daftar Token Ujian Aktif & Jadwal Berkala
+        </h2>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="bg-slate-50 text-[11px] font-bold text-slate-600 uppercase tracking-wider border-b border-slate-200">
+                <th class="p-3">Kelas</th>
+                <th class="p-3">Mapel</th>
+                <th class="p-3">Token</th>
+                <th class="p-3">Durasi</th>
+                <th class="p-3">Jadwal Aktif (WIB)</th>
+                <th class="p-3 text-center">Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="tabelConfig" class="text-xs divide-y divide-slate-100">
+              <tr>
+                <td colspan="6" class="p-4 text-center text-slate-400">Memuat data token...</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
-      </section>
+      </div>
 
     </div>
+
   </main>
 
-  <!-- JAVASCRIPT LOGIC -->
+  <!-- SCRIPT LOGIC ADMIN -->
   <script>
-    let semuaDataHasil = [];
-
-    // Live Clock Header
-    setInterval(() => {
-      const now = new Date();
-      document.getElementById('clockLive').textContent = now.toLocaleTimeString('id-ID') + ' WIB';
-    }, 1000);
-
-    // Toggle Collapse Sidebar
-    let isCollapsed = false;
-    function toggleSidebar() {
-      isCollapsed = !isCollapsed;
-      const sidebar = document.getElementById('sidebar');
-      const toggleIcon = document.getElementById('toggleIcon');
-      const textElements = document.querySelectorAll('.sidebar-text');
-
-      if (isCollapsed) {
-        sidebar.classList.remove('w-64');
-        sidebar.classList.add('w-20');
-        toggleIcon.style.transform = 'rotate(180deg)';
-        textElements.forEach(el => el.style.display = 'none');
-      } else {
-        sidebar.classList.remove('w-20');
-        sidebar.classList.add('w-64');
-        toggleIcon.style.transform = 'rotate(0deg)';
-        setTimeout(() => {
-          textElements.forEach(el => el.style.display = 'block');
-        }, 150);
-      }
-    }
-
-    // Tab Switcher Hybrid
-    function switchTab(tabId) {
-      document.querySelectorAll('section[id^="tab-"]').forEach(sec => sec.classList.add('hidden'));
-      document.getElementById(`tab-${tabId}`).classList.remove('hidden');
-
-      document.querySelectorAll('.nav-link').forEach(link => {
-        link.classList.remove('bg-blue-600', 'text-white', 'shadow-sm');
-        link.classList.add('hover:bg-slate-800', 'hover:text-white');
-      });
-
-      const activeNav = document.getElementById(`nav-${tabId}`);
-      if (activeNav) {
-        activeNav.classList.add('bg-blue-600', 'text-white', 'shadow-sm');
-        activeNav.classList.remove('hover:bg-slate-800');
-      }
-
-      const titles = {
-        beranda: 'Beranda Utama',
-        monitoring: 'Monitoring Ujian Real-Time',
-        token: 'Manajemen Token & Jadwal',
-        soal: 'Pengelolaan Bank Soal',
-        rekap: 'Rekapitulasi & Cetak Hasil Ujian'
-      };
-      document.getElementById('pageTitle').textContent = titles[tabId] || 'Dashboard';
-
-      if (tabId === 'monitoring') loadMonitoring();
-      if (tabId === 'token') loadConfigs();
-      if (tabId === 'soal') loadSoal();
-      if (tabId === 'rekap') loadHasil();
-      if (tabId === 'beranda') {
-        loadLiveFeed();
-        loadDashboardStats();
-      }
-    }
-
-    // Toggle Form Input Tipe Soal (PG vs Isian)
-    function toggleTipeSoal(tipe) {
-      const cOpsi = document.getElementById('containerOpsiPG');
-      const cKunciPG = document.getElementById('containerKunciPG');
-      const cKunciIsian = document.getElementById('containerKunciIsian');
-
-      if (tipe === 'isian') {
-        cOpsi.classList.add('hidden');
-        cKunciPG.classList.add('hidden');
-        cKunciIsian.classList.remove('hidden');
-      } else {
-        cOpsi.classList.remove('hidden');
-        cKunciPG.classList.remove('hidden');
-        cKunciIsian.classList.add('hidden');
-      }
-    }
-
-    async function loadDashboardStats() {
-      try {
-        const resMon = await fetch('/api/admin/monitoring');
-        const rMon = await resMon.json();
-        if (rMon.success) {
-          const aktif = rMon.data.filter(s => s.status !== 'Selesai').length;
-          document.getElementById('bigCountSiswa').textContent = aktif;
-        }
-
-        const resHasil = await fetch('/api/admin/hasil');
-        const rHasil = await resHasil.json();
-        if (rHasil.success) {
-          document.getElementById('bigCountHasil').textContent = rHasil.total;
-        }
-      } catch (err) {}
-    }
-
-    async function loadLiveFeed() {
-      try {
-        const res = await fetch('/api/admin/monitoring');
-        const result = await res.json();
-        const feed = document.getElementById('liveActivityFeed');
-        if (!result.success || result.data.length === 0) {
-          feed.innerHTML = '<p class="text-xs text-slate-400 py-2">Belum ada aktivitas ujian aktif saat ini.</p>';
-          return;
-        }
-        feed.innerHTML = result.data.slice(0, 5).map(s => `
-          <div class="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
-            <div class="flex items-center gap-3">
-              <div class="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 font-bold flex items-center justify-center text-xs">👤</div>
-              <div>
-                <p class="font-bold text-slate-800 text-xs">${s.nama} <span class="text-slate-400 font-normal">(${s.kelas})</span></p>
-                <p class="text-[11px] text-slate-500">Mapel: ${s.mapel} • Progress: ${s.answeredCount}/${s.totalQuestions} soal</p>
-              </div>
-            </div>
-            <span class="px-2.5 py-1 rounded-lg text-[10px] font-bold ${s.status === 'Selesai' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'}">${s.status}</span>
-          </div>
-        `).join('');
-      } catch (err) {}
-    }
-
-    async function loadMonitoring() {
-      try {
-        const res = await fetch('/api/admin/monitoring');
-        const result = await res.json();
-        if (!result.success) return;
-
-        const allSessions = result.data || [];
-        const selectFilter = document.getElementById('filterMonitoringKelas');
-        const selectedKelas = selectFilter ? selectFilter.value : 'semua';
-
-        if (selectFilter) {
-          const daftarKelas = [...new Set(allSessions.map(s => s.kelas).filter(k => k && k !== '-'))].sort();
-          const opsiSaatIni = Array.from(selectFilter.options).map(o => o.value);
-          daftarKelas.forEach(kls => {
-            if (!opsiSaatIni.includes(kls)) {
-              const opt = document.createElement('option');
-              opt.value = kls;
-              opt.textContent = kls;
-              selectFilter.appendChild(opt);
-            }
-          });
-        }
-
-        const filteredSessions = selectedKelas === 'semua'
-          ? allSessions
-          : allSessions.filter(s => s.kelas.toLowerCase() === selectedKelas.toLowerCase());
-
-        const tbody = document.getElementById('tbodyMonitoring');
-        if (filteredSessions.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="7" class="py-8 text-center text-slate-400">Belum ada siswa aktif pada filter ini.</td></tr>';
-          return;
-        }
-
-        tbody.innerHTML = filteredSessions.map(s => `
-          <tr class="hover:bg-slate-50 transition">
-            <td class="py-3 px-4 font-semibold text-slate-800">${s.nama} <span class="text-slate-400 font-mono text-[11px]">(${s.username})</span></td>
-            <td class="py-3 px-4"><span class="bg-blue-50 text-blue-700 px-2 py-0.5 rounded font-semibold">${s.kelas}</span></td>
-            <td class="py-3 px-4">${s.mapel}</td>
-            <td class="py-3 px-4 font-mono font-bold">${s.answeredCount} / ${s.totalQuestions}</td>
-            <td class="py-3 px-4 text-center"><span class="px-2 py-0.5 rounded font-bold ${s.warnings > 0 ? 'bg-red-100 text-red-700' : 'text-slate-400'}">${s.warnings} / 3</span></td>
-            <td class="py-3 px-4 text-center"><span class="px-2.5 py-1 rounded-lg border text-[10px] font-bold ${s.status === 'Selesai' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-blue-50 text-blue-700 border-blue-200'}">${s.status}</span></td>
-            <td class="py-3 px-4 text-right text-slate-400 text-[11px]">${s.waktuUpdate}</td>
-          </tr>
-        `).join('');
-      } catch (err) {}
-    }
-
-    async function resetMonitoring() {
-      if (!confirm('Yakin ingin mereset log monitoring siswa?')) return;
-      await fetch('/api/admin/monitoring', { method: 'DELETE' });
-      loadMonitoring();
-    }
-
-    async function loadConfigs() {
+    async function muatConfig() {
       try {
         const res = await fetch('/api/admin/config');
-        const result = await res.json();
-        const tbody = document.getElementById('tbodyConfigs');
-        if (!result.success || result.configs.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="5" class="py-6 text-center text-slate-400">Belum ada token aktif.</td></tr>';
-          return;
+        const data = await res.json();
+        if (data.success) {
+          const tbody = document.getElementById('tabelConfig');
+          tbody.innerHTML = '';
+
+          if (data.configs.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-400">Belum ada token yang dibuat.</td></tr>`;
+            return;
+          }
+
+          data.configs.forEach(c => {
+            const jadwal = (c.jamMulai && c.jamSelesai) ? `${c.jamMulai} - ${c.jamSelesai}` : 'Sepanjang Hari';
+            const tr = document.createElement('tr');
+            tr.className = 'hover:bg-slate-50 transition';
+            tr.innerHTML = `
+              <td class="p-3 font-medium text-slate-800">${c.kelas}</td>
+              <td class="p-3 text-slate-600">${c.mapel}</td>
+              <td class="p-3 font-mono font-bold text-emerald-700 bg-emerald-50/50 rounded">${c.token}</td>
+              <td class="p-3 text-slate-600">${c.durasiMenit} Menit</td>
+              <td class="p-3 text-slate-600 font-medium">${jadwal}</td>
+              <td class="p-3 text-center">
+                <button onclick="hapusToken('${c.token}')" class="bg-rose-50 hover:bg-rose-100 text-rose-600 px-3 py-1.5 rounded-lg font-bold text-[11px] transition">Hapus</button>
+              </td>
+            `;
+            tbody.appendChild(tr);
+          });
         }
-        tbody.innerHTML = result.configs.map(c => `
-          <tr class="hover:bg-slate-50 transition">
-            <td class="py-3 px-3 font-semibold">${c.kelas}</td>
-            <td class="py-3 px-3">${c.mapel}</td>
-            <td class="py-3 px-3 font-mono font-bold text-blue-600">${c.token}</td>
-            <td class="py-3 px-3">${c.durasiMenit} Menit</td>
-            <td class="py-3 px-3 text-center">
-              <button onclick="hapusConfig('${c.token}')" class="bg-red-50 hover:bg-red-100 text-red-600 px-2.5 py-1 rounded-lg font-semibold text-[11px] transition">Hapus</button>
-            </td>
-          </tr>
-        `).join('');
-      } catch (err) {}
+      } catch (err) {
+        console.error('Gagal memuat config:', err);
+      }
     }
 
-    document.getElementById('formConfig').addEventListener('submit', async (e) => {
+    document.getElementById('formToken').addEventListener('submit', async (e) => {
       e.preventDefault();
       const payload = {
-        kelas: document.getElementById('configKelas').value,
-        mapel: document.getElementById('configMapel').value,
-        token: document.getElementById('configToken').value,
-        durasiMenit: document.getElementById('configDurasi').value
-      };
-      const res = await fetch('/api/admin/config', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      const result = await res.json();
-      alert(result.message);
-      if (result.success) {
-        document.getElementById('formConfig').reset();
-        loadConfigs();
-      }
-    });
-
-    async function hapusConfig(token) {
-      if (!confirm(`Hapus token ${token}?`)) return;
-      const res = await fetch(`/api/admin/config/${token}`, { method: 'DELETE' });
-      const result = await res.json();
-      alert(result.message);
-      loadConfigs();
-    }
-
-    async function loadSoal(force = false) {
-      try {
-        const res = await fetch(`/api/soal${force ? '?refresh=true' : ''}`);
-        const result = await res.json();
-        const tbody = document.getElementById('tbodySoal');
-        if (!result.success || result.data.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="5" class="py-8 text-center text-slate-400">Belum ada soal tersedia.</td></tr>';
-          return;
-        }
-        tbody.innerHTML = result.data.map(q => `
-          <tr class="hover:bg-slate-50 transition">
-            <td class="py-3 px-3"><input type="checkbox" class="soal-checkbox" value="${q.id}"></td>
-            <td class="py-3 px-3"><span class="bg-slate-100 text-slate-700 px-2 py-0.5 rounded font-semibold text-[10px]">${q.kelas} • ${q.mapel}</span></td>
-            <td class="py-3 px-3 max-w-xs truncate font-medium text-slate-800">${q.pertanyaan}</td>
-            <td class="py-3 px-3 text-center font-bold text-emerald-600">${q.tipe === 'isian' ? 'Isian' : 'PG'} (${q.jawaban_benar})</td>
-            <td class="py-3 px-3 text-right">
-              <button onclick="hapusSoal('${q.id}')" class="text-red-600 hover:text-red-800 font-semibold text-[11px]">Hapus</button>
-            </td>
-          </tr>
-        `).join('');
-      } catch (err) {}
-    }
-
-    function toggleSelectAll(master) {
-      document.querySelectorAll('.soal-checkbox').forEach(cb => cb.checked = master.checked);
-    }
-
-    async function hapusSoal(id) {
-      if (!confirm('Hapus soal ini?')) return;
-      await fetch(`/api/soal/${id}`, { method: 'DELETE' });
-      loadSoal();
-    }
-
-    async function hapusSoalTerpilih() {
-      const selected = Array.from(document.querySelectorAll('.soal-checkbox:checked')).map(cb => cb.value);
-      if (selected.length === 0) {
-        alert('Pilih minimal satu soal yang ingin dihapus!');
-        return;
-      }
-      if (!confirm(`Hapus ${selected.length} soal terpilih?`)) return;
-      const res = await fetch('/api/soal/bulk-delete', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ids: selected })
-      });
-      const result = await res.json();
-      alert(result.message || 'Berhasil menghapus soal.');
-      loadSoal();
-    }
-
-    // Event Submit Form Tambah Soal Manual (Mendukung Tipe Soal)
-    document.getElementById('formSoal').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const tipeSoal = document.getElementById('inputTipeSoal').value;
-      const kunciVal = tipeSoal === 'isian' 
-        ? document.getElementById('inputJawabanIsian').value 
-        : document.getElementById('inputJawabanBenar').value;
-
-      const payload = {
-        kelas: document.getElementById('inputKelas').value,
-        mapel: document.getElementById('inputMapel').value,
-        tipe: tipeSoal,
-        pertanyaan: document.getElementById('inputPertanyaan').value,
-        opsiA: tipeSoal === 'isian' ? '-' : document.getElementById('inputOpsiA').value,
-        opsiB: tipeSoal === 'isian' ? '-' : document.getElementById('inputOpsiB').value,
-        opsiC: tipeSoal === 'isian' ? '-' : document.getElementById('inputOpsiC').value,
-        opsiD: tipeSoal === 'isian' ? '-' : document.getElementById('inputOpsiD').value,
-        jawabanBenar: kunciVal
+        kelas: document.getElementById('kelasToken').value.trim(),
+        mapel: document.getElementById('mapelToken').value.trim(),
+        token: document.getElementById('kodeToken').value.trim().toUpperCase(),
+        durasiMenit: parseInt(document.getElementById('durasiToken').value, 10),
+        jamMulai: document.getElementById('jamMulaiToken').value,
+        jamSelesai: document.getElementById('jamSelesaiToken').value
       };
 
-      const res = await fetch('/api/soal', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      const result = await res.json();
-      if (result.success) {
-        alert('Soal berhasil disimpan!');
-        document.getElementById('formSoal').reset();
-        toggleTipeSoal('pg'); // Reset tampilan ke PG
-        loadSoal(true);
-      } else {
-        alert('Gagal: ' + result.message);
-      }
-    });
-
-    document.getElementById('formImportExcel').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const formData = new FormData();
-      formData.append('fileExcel', document.getElementById('fileExcel').files[0]);
-      formData.append('kelas', document.getElementById('inputKelas').value || 'Kelas 5');
-      formData.append('mapel', document.getElementById('inputMapel').value || 'Umum');
-      const res = await fetch('/api/admin/import-excel', { method: 'POST', body: formData });
-      const result = await res.json();
-      alert(result.message);
-      if (result.success) loadSoal(true);
-    });
-
-    document.getElementById('formImportWord').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const formData = new FormData();
-      formData.append('fileWord', document.getElementById('fileWord').files[0]);
-      formData.append('kelas', document.getElementById('inputKelas').value || 'Kelas 5');
-      formData.append('mapel', document.getElementById('inputMapel').value || 'Umum');
-      const res = await fetch('/api/admin/import-word', { method: 'POST', body: formData });
-      const result = await res.json();
-      alert(result.message);
-      if (result.success) loadSoal(true);
-    });
-
-    async function loadHasil() {
       try {
-        const res = await fetch('/api/admin/hasil');
-        const result = await res.json();
-        if (!result.success) return;
-
-        semuaDataHasil = result.data || [];
-        const selKelas = document.getElementById('filterHasilKelas');
-        const selMapel = document.getElementById('filterHasilMapel');
-
-        const listKelas = [...new Set(semuaDataHasil.map(d => d.kelas))].sort();
-        const listMapel = [...new Set(semuaDataHasil.map(d => d.mapel))].sort();
-
-        if (selKelas.options.length <= 1) {
-          listKelas.forEach(k => selKelas.innerHTML += `<option value="${k}">${k}</option>`);
-        }
-        if (selMapel.options.length <= 1) {
-          listMapel.forEach(m => selMapel.innerHTML += `<option value="${m}">${m}</option>`);
-        }
-
-        const filterK = selKelas.value;
-        const filterM = selMapel.value;
-
-        const filtered = semuaDataHasil.filter(d => {
-          const matchK = (filterK === 'semua' || d.kelas.toLowerCase() === filterK.toLowerCase());
-          const matchM = (filterM === 'semua' || d.mapel.toLowerCase() === filterM.toLowerCase());
-          return matchK && matchM;
+        const res = await fetch('/api/admin/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
         });
-
-        const tbody = document.getElementById('tbodyHasil');
-        if (filtered.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="8" class="py-8 text-center text-slate-400">Tidak ada rekap nilai ditemukan.</td></tr>';
-          return;
+        const result = await res.json();
+        if (result.success) {
+          alert('Token berkala berhasil disimpan!');
+          document.getElementById('formToken').reset();
+          muatConfig();
+        } else {
+          alert('Gagal: ' + result.message);
         }
-
-        tbody.innerHTML = filtered.map((item, idx) => `
-          <tr class="hover:bg-slate-50 transition">
-            <td class="py-3 px-4 font-semibold text-slate-500">${idx + 1}</td>
-            <td class="py-3 px-4 text-slate-500 text-[11px]">${item.waktu}</td>
-            <td class="py-3 px-4 font-bold text-slate-800">${item.nama}</td>
-            <td class="py-3 px-4 font-mono text-slate-600">${item.username}</td>
-            <td class="py-3 px-4"><span class="bg-blue-50 text-blue-700 px-2 py-0.5 rounded font-semibold">${item.kelas}</span></td>
-            <td class="py-3 px-4">${item.mapel}</td>
-            <td class="py-3 px-4 text-center font-bold text-emerald-600 text-sm">${item.nilai}</td>
-            <td class="py-3 px-4 text-center">
-              <button onclick="cetakRaporSiswa('${item.username}')" class="bg-blue-50 hover:bg-blue-100 text-blue-700 px-3 py-1 rounded-lg font-bold text-[11px] transition shadow-xs">
-                📄 Cetak Rapor
-              </button>
-            </td>
-          </tr>
-        `).join('');
-      } catch (err) {}
-    }
-
-    function exportHasilExcel() {
-      const valKelas = document.getElementById('filterHasilKelas').value;
-      const valMapel = document.getElementById('filterHasilMapel').value;
-      window.location.href = `/api/admin/export-hasil?kelas=${encodeURIComponent(valKelas)}&mapel=${encodeURIComponent(valMapel)}`;
-    }
-
-    function downloadRekapPDF() {
-      const valKelas = document.getElementById('filterHasilKelas').value;
-      const valMapel = document.getElementById('filterHasilMapel').value;
-      
-      document.getElementById('printFilterInfo').textContent = `Filter Kelas: ${valKelas} | Mata Pelajaran: ${valMapel}`;
-
-      const element = document.getElementById('areaTabelRekap');
-      const opt = {
-        margin:       10,
-        filename:     `Rekap_Nilai_${valKelas}_${valMapel}.pdf`.replace(/\s+/g, '_'),
-        image:        { type: 'jpeg', quality: 0.98 },
-        html2canvas:  { scale: 2, useCORS: true },
-        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' }
-      };
-
-      html2pdf().from(element).set(opt).save();
-    }
-
-    function cetakRaporSiswa(username) {
-      const nilaiSiswa = semuaDataHasil.filter(d => d.username === username);
-      if (nilaiSiswa.length === 0) {
-        alert('Data nilai siswa tidak ditemukan.');
-        return;
+      } catch (err) {
+        alert('Terjadi kesalahan jaringan.');
       }
+    });
 
-      const siswaInfo = nilaiSiswa[0];
-      let printWindow = window.open('', '_blank', 'width=800,height=600');
-      
-      let htmlContent = `<html>\n<head>\n<title>Rapor Ujian - ${siswaInfo.nama}</title>\n<script src="https://cdn.tailwindcss.com"><\/script>\n</head>\n<body class="p-8 bg-white font-sans text-slate-800">\n<div class="max-w-2xl mx-auto space-y-6 border border-slate-200 p-8 rounded-3xl shadow-sm">\n<div class="text-center border-b border-slate-100 pb-4">\n<h2 class="font-bold text-base text-slate-900">SDIT NURUSSIROJ</h2>\n<p class="text-xs text-slate-500 uppercase tracking-wider font-semibold">Laporan Hasil Ujian Berbasis Komputer (CBT)</p>\n</div>\n<div class="grid grid-cols-2 text-xs bg-slate-50 p-4 rounded-2xl border border-slate-200/60">\n<div><p class="text-slate-500">Nama Siswa:</p><p class="font-bold text-slate-800">${siswaInfo.nama}</p></div>\n<div><p class="text-slate-500">Kelas:</p><p class="font-bold text-slate-800">${siswaInfo.kelas}</p></div>\n<div class="mt-2"><p class="text-slate-500">NIS / Username:</p><p class="font-bold text-slate-800">${siswaInfo.username}</p></div>\n<div class="mt-2"><p class="text-slate-500">Tanggal Cetak:</p><p class="font-bold text-slate-800">${new Date().toLocaleDateString('id-ID')}</p></div>\n</div>\n<table class="w-full text-left text-xs border-collapse">\n<thead>\n<tr class="bg-emerald-50 text-emerald-900 border-b border-emerald-100">\n<th class="p-3 rounded-l-xl">No</th>\n<th class="p-3">Mata Pelajaran</th>\n<th class="p-3 text-center">Waktu Submit</th>\n<th class="p-3 text-right rounded-r-xl">Nilai Akhir</th>\n</tr>\n</thead>\n<tbody>`;
-
-      let totalNilai = 0;
-      nilaiSiswa.forEach((item, idx) => {
-        totalNilai += parseFloat(item.nilai || 0);
-        htmlContent += `<tr class="border-b border-slate-100">\n<td class="p-3 text-slate-500">${idx + 1}</td>\n<td class="p-3 font-semibold text-slate-800">${item.mapel}</td>\n<td class="p-3 text-center text-slate-500">${item.waktu}</td>\n<td class="p-3 text-right font-bold text-emerald-700">${item.nilai}</td>\n</tr>`;
-      });
-
-      const rataRata = (totalNilai / nilaiSiswa.length).toFixed(1);
-
-      htmlContent += `</tbody>\n</table>\n<div class="flex justify-between items-center bg-emerald-50 border border-emerald-100 p-4 rounded-2xl text-xs">\n<span class="font-bold text-emerald-900">Rata-rata Nilai Keseluruhan:</span>\n<span class="font-extrabold text-emerald-800 text-sm">${rataRata}</span>\n</div>\n<div class="text-center pt-6 text-[11px] text-slate-400 border-t border-slate-100">\n<p>Dokumen ini dicetak secara resmi dan sah dari sistem CBT SDIT Nurussiroj.</p>\n</div>\n</div>\n<script>\nwindow.onload = function() { window.print(); }\n<\/script>\n</body>\n</html>`;
-
-      printWindow.document.write(htmlContent);
-      printWindow.document.close();
+    async function hapusToken(token) {
+      if (!confirm(`Yakin ingin menghapus token ${token}?`)) return;
+      try {
+        const res = await fetch(`/api/admin/config/${token}`, { method: 'DELETE' });
+        const result = await res.json();
+        if (result.success) {
+          muatConfig();
+        } else {
+          alert('Gagal menghapus token.');
+        }
+      } catch (err) {
+        alert('Terjadi kesalahan jaringan.');
+      }
     }
 
-    loadLiveFeed();
-    loadDashboardStats();
+    muatConfig();
   </script>
 </body>
 </html>
