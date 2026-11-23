@@ -197,17 +197,26 @@ app.get('/api/admin/config', async (req, res) => {
 });
 
 app.post('/api/admin/config', async (req, res) => {
-  const { kelas, mapel, token, durasiMenit } = req.body;
+  const { kelas, mapel, token, durasiMenit, jamMulai, jamSelesai } = req.body;
   if (!kelas || !token || !durasiMenit) {
     return res.status(400).json({ success: false, message: 'Field kelas, token, dan durasi wajib diisi!' });
   }
+  
   const existingIdx = classConfigs.findIndex(c => c.token.toUpperCase() === token.trim().toUpperCase());
-  const newConfig = { kelas: kelas.trim(), mapel: (mapel || 'Umum').trim(), token: token.trim().toUpperCase(), durasiMenit: parseInt(durasiMenit, 10) };
+  const newConfig = { 
+    kelas: kelas.trim(), 
+    mapel: (mapel || 'Umum').trim(), 
+    token: token.trim().toUpperCase(), 
+    durasiMenit: parseInt(durasiMenit, 10),
+    jamMulai: jamMulai ? jamMulai.trim() : '',
+    jamSelesai: jamSelesai ? jamSelesai.trim() : ''
+  };
+
   if (existingIdx >= 0) classConfigs[existingIdx] = newConfig;
   else classConfigs.push(newConfig);
 
   await saveConfigsToSheet(classConfigs);
-  res.json({ success: true, message: `Token berhasil disimpan!`, configs: classConfigs });
+  res.json({ success: true, message: `Token berkala berhasil disimpan!`, configs: classConfigs });
 });
 
 app.delete('/api/admin/config/:token', async (req, res) => {
@@ -364,6 +373,27 @@ app.post('/api/login', async (req, res) => {
 
     const validConfig = classConfigs.find(item => item.token && item.token.toString().trim().toUpperCase() === token.trim().toUpperCase());
     if (!validConfig) return res.status(400).json({ success: false, message: 'Token Ujian salah atau tidak terdaftar.' });
+
+    // --- VALIDASI WAKTU BERKALA OTOMATIS ---
+    if (validConfig.jamMulai && validConfig.jamSelesai) {
+      const sekarang = new Date();
+      // Ambil waktu jam server dalam format "HH:MM" (WIB / Asia/Jakarta)
+      const jamSekarang = sekarang.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Jakarta' });
+      
+      if (jamSekarang < validConfig.jamMulai) {
+        return res.status(400).json({ 
+          success: false, 
+          message: `Ujian belum dimulai! Token ini baru aktif pada pukul ${validConfig.jamMulai} WIB.` 
+        });
+      }
+      if (jamSekarang > validConfig.jamSelesai) {
+        return res.status(400).json({ 
+          success: false, 
+          message: `Waktu ujian telah berakhir! Token ini ditutup pada pukul ${validConfig.jamSelesai} WIB.` 
+        });
+      }
+    }
+    // ----------------------------------------
 
     res.json({ 
       success: true, 

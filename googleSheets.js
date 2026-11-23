@@ -270,56 +270,56 @@ async function getResultsFromSheet() {
 }
 
 // 7. Ambil & Simpan Konfigurasi Token Permanen di Tab 'Config'
-async function getConfigsFromSheet() {
+// Membaca Config termasuk Jam Mulai & Selesai
+async function getConfigsFromSheet(sheetName = 'Config') {
   try {
     const client = await auth.getClient();
     const googleSheets = google.sheets({ version: 'v4', auth: client });
 
     const response = await googleSheets.spreadsheets.values.get({
       spreadsheetId: getSpreadsheetId(),
-      range: 'Config!A2:D',
+      range: `${sheetName}!A2:F`,
     });
 
     const rows = response.data.values || [];
-    return rows
-      .filter(r => r[0] && r[2])
-      .map(r => ({
-        kelas: r[0].trim(),
-        mapel: (r[1] || 'Umum').trim(),
-        token: r[2].trim().toUpperCase(),
-        durasiMenit: parseInt(r[3], 10) || 60
-      }));
+    return rows.map((row) => ({
+      kelas: row[0] || '',
+      mapel: row[1] || '',
+      token: row[2] || '',
+      durasiMenit: parseInt(row[3], 10) || 60,
+      jamMulai: row[4] || '',   // Format "07:30"
+      jamSelesai: row[5] || ''  // Format "09:30"
+    }));
   } catch (error) {
-    console.warn('Gagal membaca tab Config:', error.message);
-    return null;
+    console.error('Gagal mengambil config:', error.message);
+    return [];
   }
 }
 
-async function saveConfigsToSheet(configs = []) {
+async function saveConfigsToSheet(configs, sheetName = 'Config') {
   try {
     const client = await auth.getClient();
     const googleSheets = google.sheets({ version: 'v4', auth: client });
-    const spreadsheetId = getSpreadsheetId();
 
+    // Bersihkan dulu baris lama
     await googleSheets.spreadsheets.values.clear({
-      spreadsheetId,
-      range: 'Config!A2:D',
+      spreadsheetId: getSpreadsheetId(),
+      range: `${sheetName}!A2:F100`,
     });
 
-    if (configs.length > 0) {
-      const values = configs.map(c => [c.kelas, c.mapel, c.token, c.durasiMenit]);
-      await googleSheets.spreadsheets.values.update({
-        spreadsheetId,
-        range: 'Config!A2',
-        valueInputOption: 'USER_ENTERED',
-        resource: { values },
-      });
-    }
+    const values = configs.map(c => [c.kelas, c.mapel, c.token, c.durasiMenit, c.jamMulai || '', c.jamSelesai || '']);
+
+    await googleSheets.spreadsheets.values.update({
+      spreadsheetId: getSpreadsheetId(),
+      range: `${sheetName}!A2:F2 + ${values.length}`,
+      valueInputOption: 'USER_ENTERED',
+      requestBody: { values },
+    });
 
     return { success: true };
   } catch (error) {
-    console.error('Gagal menyimpan konfigurasi token ke tab Config:', error.message);
-    return { success: false, error: error.message };
+    console.error('Gagal menyimpan config:', error.message);
+    return { success: false, message: error.message };
   }
 }
 
