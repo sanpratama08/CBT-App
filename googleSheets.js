@@ -52,7 +52,7 @@ function normalizeImageUrl(rawUrl) {
   return url;
 }
 
-// 1. Ambil Soal dari Sheet (Kolom A sampai N)
+// Ambil Soal dari Sheet dengan Deteksi Tipe Soal yang Pasti
 async function getQuestionsFromSheet(sheetName = 'Soal') {
   try {
     const client = await auth.getClient();
@@ -67,20 +67,31 @@ async function getQuestionsFromSheet(sheetName = 'Soal') {
     
     return rows
       .filter((row) => row[0] && row[1])
-      .map((row) => ({
-        id: row[0],
-        pertanyaan: row[1] || '',
-        opsi: [
-          { key: 'A', text: row[2] || '', image: normalizeImageUrl(row[10]) },
-          { key: 'B', text: row[3] || '', image: normalizeImageUrl(row[11]) },
-          { key: 'C', text: row[4] || '', image: normalizeImageUrl(row[12]) },
-          { key: 'D', text: row[5] || '', image: normalizeImageUrl(row[13]) }
-        ],
-        jawaban_benar: row[6] || '',
-        kelas: row[7] || 'Umum',
-        mapel: row[8] || 'Umum',
-        gambar_soal: normalizeImageUrl(row[9])
-      }));
+      .map((row) => {
+        // Kolom J (index 9) dapat diisi 'isian' atau 'pg' secara manual di spreadsheet
+        const explicitType = (row[9] || '').trim().toLowerCase();
+        const opsiA = row[2] || '';
+        const opsiB = row[3] || '';
+        
+        // Jika kolom J diisi 'isian' atau jika opsi A & B kosong / '-'
+        const isIsian = explicitType === 'isian' || ((!opsiA || opsiA === '-') && (!opsiB || opsiB === '-'));
+
+        return {
+          id: row[0],
+          pertanyaan: row[1] || '',
+          tipe: isIsian ? 'isian' : 'pg',
+          opsi: isIsian ? [] : [
+            { key: 'A', text: row[2] || '', image: normalizeImageUrl(row[10]) },
+            { key: 'B', text: row[3] || '', image: normalizeImageUrl(row[11]) },
+            { key: 'C', text: row[4] || '', image: normalizeImageUrl(row[12]) },
+            { key: 'D', text: row[5] || '', image: normalizeImageUrl(row[13]) }
+          ],
+          jawaban_benar: row[6] || '',
+          kelas: row[7] || 'Umum',
+          mapel: row[8] || 'Umum',
+          gambar_soal: normalizeImageUrl(row[9])
+        };
+      });
   } catch (error) {
     console.error(`Gagal mengambil soal dari tab ${sheetName}:`, error.message);
     throw error;
