@@ -495,32 +495,35 @@ app.post('/api/ujian/start', async (req, res) => {
     }
 
     let randomized = shuffleArray(filteredQuestions);
-    randomized = randomized.map(q => {
-      if (q.tipe === 'isian') {
-        return {
-          id: q.id,
-          pertanyaan: q.pertanyaan,
-          tipe: 'isian',
-          gambar_soal: q.gambar_soal || '',
-          opsi: []
-        };
-      } else {
-        let shuffledOpsiTexts = shuffleArray(q.opsi);
-        let labeledOpsi = shuffledOpsiTexts.map((opt, idx) => ({
-          key: ['A', 'B', 'C', 'D'][idx],
-          text: opt.text,
-          image: opt.image
-        }));
+        randomized = randomized.map(q => {
+          if (q.tipe === 'isian') {
+            return {
+              id: q.id,
+              pertanyaan: q.pertanyaan,
+              tipe: 'isian',
+              gambar_soal: q.gambar_soal || '',
+              opsi: []
+            };
+          } else {
+            // 1. Ambil opsi asli, lalu acak posisi teksnya
+            let shuffledOpsiTexts = shuffleArray(q.opsi);
+            
+            // 2. Berikan label A, B, C, D secara berurutan pada hasil acakan tersebut
+            let labeledOpsi = shuffledOpsiTexts.map((opt, idx) => ({
+              key: ['A', 'B', 'C', 'D'][idx], // Pastikan selalu A, B, C, D berurutan
+              text: opt.text,
+              image: opt.image
+            }));
 
-        return {
-          id: q.id,
-          pertanyaan: q.pertanyaan,
-          tipe: 'pg',
-          gambar_soal: q.gambar_soal || '',
-          opsi: labeledOpsi
-        };
-      }
-    });
+            return {
+              id: q.id,
+              pertanyaan: q.pertanyaan,
+              tipe: 'pg',
+              gambar_soal: q.gambar_soal || '',
+              opsi: labeledOpsi
+            };
+          }
+        });
     res.json({ 
       success: true, 
       total: randomized.length, 
