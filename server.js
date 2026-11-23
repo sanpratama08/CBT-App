@@ -65,7 +65,6 @@ async function getQuestionsCached(forceRefresh = false) {
     lastQuestionsFetch = now;
     return freshData;
   } catch (err) {
-    // Jika Google API sedang sibuk/limit, gunakan cache lama bila tersedia
     if (cachedQuestions) {
       console.warn('Menggunakan cache soal cadangan karena limit API:', err.message);
       return cachedQuestions;
@@ -79,7 +78,7 @@ function invalidateQuestionsCache() {
   lastQuestionsFetch = 0;
 }
 
-// Antrean penyimpanan hasil ujian agar tidak bentrok saat siswa submit bersamaan
+// Antrean penyimpanan hasil ujian
 const submissionQueue = [];
 let isProcessingQueue = false;
 
@@ -98,7 +97,6 @@ async function processSubmissionQueue() {
     const { payload, resolve } = submissionQueue.shift();
     let result = { success: false };
 
-    // Coba simpan hingga maksimal 3x jika terjadi lonjakan API
     for (let attempt = 1; attempt <= 3; attempt++) {
       result = await saveResultToSheet(
         payload.nama,
@@ -113,15 +111,12 @@ async function processSubmissionQueue() {
     }
 
     resolve(result);
-    // Jeda singkat 250ms antar penulisan agar aman dari rate-limit Google Sheets
     await new Promise(r => setTimeout(r, 250));
   }
 
   isProcessingQueue = false;
 }
 
-// Konfigurasi Token Permanen
-// Konfigurasi Token Permanen (Kosongkan default agar tidak otomatis isi Kelas 6)
 let classConfigs = [];
 
 async function initConfigs() {
@@ -151,20 +146,10 @@ app.get('/api/soal', async (req, res) => {
   try {
     const force = req.query.refresh === 'true';
     const soal = await getQuestionsCached(force);
-    res.json({ total: soal.length, data: soal });
+    res.json({ success: true, total: soal.length, data: soal });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
-
-  app.get('/api/soal', async (req, res) => {
-  try {
-    const force = req.query.refresh === 'true';
-    const soal = await getQuestionsCached(force);
-    res.json({ success: true, total: soal.length, data: soal }); // Tambahkan success: true
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-});
 });
 
 app.delete('/api/soal/:id', async (req, res) => {
@@ -314,8 +299,6 @@ app.post('/api/admin/import-word', upload.single('fileWord'), async (req, res) =
   }
 });
 
-
-// Kelola Token Permanen (Selalu sinkron dengan tab Config)
 app.get('/api/admin/config', async (req, res) => {
   const sheetConfigs = await getConfigsFromSheet();
   if (Array.isArray(sheetConfigs)) {
@@ -323,6 +306,7 @@ app.get('/api/admin/config', async (req, res) => {
   }
   res.json({ success: true, configs: classConfigs });
 });
+
 app.post('/api/admin/config', async (req, res) => {
   const { kelas, mapel, token, durasiMenit } = req.body;
   if (!kelas || !token || !durasiMenit) {
@@ -413,10 +397,29 @@ app.get('/api/admin/export-hasil', async (req, res) => {
   }
 });
 
-// Monitoring Real-Time
+// Monitoring & Anti-Cheat Heartbeat (Batas Keluar Maksimal 3 Kali)
 app.post('/api/ujian/heartbeat', (req, res) => {
   const { username, nama, kelas, mapel, answeredCount, totalQuestions, warnings, status } = req.body;
   if (!username) return res.status(400).json({ success: false });
+
+  const currentWarnings = warnings || 0;
+  
+  // Jika peringatan keluar tab sudah mencapai atau melebihi 3 kali
+  if (currentWarnings >= 3) {
+    activeSessions[username] = {
+      username,
+      nama: nama || 'Siswa',
+      kelas: kelas || '-',
+      mapel: mapel || '-',
+      answeredCount: answeredCount || 0,
+      totalQuestions: totalQuestions || 0,
+      warnings: currentWarnings,
+      status: 'Diskualifikasi / Keluar 3x',
+      lastSeen: Date.now()
+    };
+    // Mengirim instruksi ke frontend untuk memaksa submit otomatis
+    return res.json({ success: true, forceSubmit: true, message: 'Anda telah keluar halaman sebanyak 3 kali. Ujian otomatis dikumpulkan!' });
+  }
 
   activeSessions[username] = {
     username,
@@ -425,12 +428,12 @@ app.post('/api/ujian/heartbeat', (req, res) => {
     mapel: mapel || '-',
     answeredCount: answeredCount || 0,
     totalQuestions: totalQuestions || 0,
-    warnings: warnings || 0,
+    warnings: currentWarnings,
     status: status || 'Mengerjakan',
     lastSeen: Date.now()
   };
 
-  res.json({ success: true });
+  res.json({ success: true, forceSubmit: false });
 });
 
 app.get('/api/admin/monitoring', (req, res) => {
@@ -457,7 +460,7 @@ app.delete('/api/admin/monitoring', (req, res) => {
 });
 
 // ------------------------------------------
-// API SISWA (MENGGUNAKAN CACHE & QUEUE)
+// API SISWA
 // ------------------------------------------
 
 app.post('/api/ujian/start', async (req, res) => {
@@ -473,7 +476,6 @@ app.post('/api/ujian/start', async (req, res) => {
       return res.status(401).json({ success: false, message: 'Token Ujian salah atau tidak terdaftar!' });
     }
 
-    // Ambil dari cache memori agar hemat kuota Google Sheets API
     const allQuestions = await getQuestionsCached();
 
     const targetKelas = (matchedConfig.kelas || '').trim().toLowerCase();
@@ -521,7 +523,7 @@ app.post('/api/ujian/start', async (req, res) => {
 app.post('/api/submit', async (req, res) => {
   try {
     const { nama, username, jawabanSiswa, kelas, mapel } = req.body;
-    if (!nama || !username || !jawabanSiswa) {
+    if (!nama || !username) {
       return res.status(400).json({ success: false, message: 'Data tidak lengkap!' });
     }
 
@@ -537,19 +539,18 @@ app.post('/api/submit', async (req, res) => {
     let benar = 0;
     const targetSoal = classQuestions.length > 0 ? classQuestions : allQuestions;
     const totalSoal = targetSoal.length;
+    const jawabanData = jawabanSiswa || {};
 
     targetSoal.forEach(q => {
-      const jawabSiswa = (jawabanSiswa[q.id] || '').toString().trim().toLowerCase();
+      const jawabSiswa = (jawabanData[q.id] || '').toString().trim().toLowerCase();
       const kunci = (q.jawaban_benar || '').toString().trim().toLowerCase();
 
       if (q.tipe === 'isian') {
-        // Penilaian Isian Singkat (Cocokkan teks, abaikan huruf besar/kecil)
         if (jawabSiswa === kunci && jawabSiswa !== '') {
           benar++;
         }
       } else {
-        // Penilaian Pilihan Ganda (Default)
-        if (jawabanSiswa[q.id] && jawabanSiswa[q.id].toString().toUpperCase() === q.jawaban_benar.toString().toUpperCase()) {
+        if (jawabanData[q.id] && jawabanData[q.id].toString().toUpperCase() === q.jawaban_benar.toString().toUpperCase()) {
           benar++;
         }
       }
@@ -557,12 +558,11 @@ app.post('/api/submit', async (req, res) => {
 
     const nilai = totalSoal > 0 ? parseFloat(((benar / totalSoal) * 100).toFixed(1)) : 0;
 
-    // Masukkan ke antrean penulisan Google Sheets
     const saveStatus = await enqueueResultSave({
       nama,
       username,
       nilai,
-      jawabanSiswa,
+      jawabanSiswa: jawabanData,
       kelas: kelas || 'Umum',
       mapel: mapel || 'Umum'
     });
@@ -583,8 +583,6 @@ app.post('/api/submit', async (req, res) => {
   }
 });
 
-
-// RUTE API LOGIN SISWA (Tersinkronisasi dengan classConfigs)
 app.post('/api/login', async (req, res) => {
   try {
     const { nama, username, token } = req.body;
@@ -593,14 +591,11 @@ app.post('/api/login', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Semua kolom wajib diisi!' });
     }
 
-    // Jika memori classConfigs masih kosong, coba muat ulang dari Google Sheets
     if (classConfigs.length === 0) {
       await initConfigs();
     }
 
     const inputToken = token.trim().toUpperCase();
-    
-    // Cocokkan dengan array classConfigs yang dimuat dari Google Sheets
     const validConfig = classConfigs.find(
       item => item.token && item.token.toString().trim().toUpperCase() === inputToken
     );
@@ -612,7 +607,6 @@ app.post('/api/login', async (req, res) => {
       });
     }
 
-    // Buat sesi siswa jika token cocok
     const sessionData = {
       nama: nama.trim(),
       username: username.trim(),
@@ -630,9 +624,6 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
-
-
-// Jalankan Server & Muat Token Permanen
 initConfigs().then(() => {
   app.listen(PORT, () => {
     console.log(`=================================`);
