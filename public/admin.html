@@ -41,19 +41,26 @@
   <aside id="sidebar" class="w-64 bg-slate-900 text-slate-300 flex flex-col transition-all duration-300 z-30 shrink-0 h-full">
     
     <!-- HEADER LOGO & TOMBOL TOGGLE -->
-    <div class="p-4 border-b border-slate-800 flex flex-col gap-3 shrink-0 overflow-hidden">
-      <div class="whitespace-nowrap">
-        <h1 class="text-base font-extrabold text-white tracking-tight font-heading">CBT Nurussiroj</h1>
-        <p class="text-[11px] font-medium text-slate-400 mt-0.5">Panel Kontrol Administrator</p>
-      </div>
-      
-      <button onclick="toggleSidebar()" class="w-full bg-slate-800/80 hover:bg-slate-800 text-slate-400 hover:text-white py-1.5 px-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition" title="Lipat / Buka Sidebar">
-        <svg id="toggleIcon" class="w-4 h-4 transition-transform duration-300 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"></path>
-        </svg>
-        <span class="sidebar-text text-[11px]">Sembunyikan Menu</span>
-      </button>
+<div class="p-4 border-b border-slate-800 flex flex-col gap-3 shrink-0 overflow-hidden">
+  <div class="flex items-center gap-3">
+    <!-- Logo kecil / Inisial saat dilipat -->
+    <div class="w-9 h-9 rounded-xl bg-blue-600 text-white font-extrabold flex items-center justify-center text-xs shrink-0 font-heading shadow-sm">
+      CN
     </div>
+    <!-- Teks lengkap yang akan tersembunyi otomatis saat dilipat -->
+    <div class="sidebar-text whitespace-nowrap overflow-hidden">
+      <h1 class="text-base font-extrabold text-white tracking-tight font-heading">CBT Nurussiroj</h1>
+      <p class="text-[11px] font-medium text-slate-400 mt-0.5">Panel Kontrol Administrator</p>
+    </div>
+  </div>
+  
+  <button onclick="toggleSidebar()" class="w-full bg-slate-800/80 hover:bg-slate-800 text-slate-400 hover:text-white py-1.5 px-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition" title="Lipat / Buka Sidebar">
+    <svg id="toggleIcon" class="w-4 h-4 transition-transform duration-300 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"></path>
+    </svg>
+    <span class="sidebar-text text-[11px]">Sembunyikan Menu</span>
+  </button>
+</div>
 
     <!-- MENU NAVIGASI -->
     <nav class="flex-1 p-3 space-y-1.5 overflow-y-auto">
