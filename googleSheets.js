@@ -3,17 +3,29 @@
 // ==========================================
 
 const { google } = require('googleapis');
+const fs = require('fs');
+const path = require('path');
 require('dotenv').config();
 
-// Inisialisasi Auth menggunakan Service Account dari .env
-const auth = new google.auth.GoogleAuth({
-  credentials: {
-    client_email: process.env.GOOGLE_CLIENT_EMAIL,
-    // Menangani pergantian baris (\n) pada private key dari environment variable
-    private_key: (process.env.GOOGLE_PRIVATE_KEY || '').replace(/\\n/g, '\n'),
-  },
-  scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-});
+const credentialsPath = path.join(__dirname, 'credentials.json');
+let auth;
+
+if (fs.existsSync(credentialsPath)) {
+  // Gunakan file credentials.json langsung jika tersedia di lokal (bebas error parsing \n)
+  auth = new google.auth.GoogleAuth({
+    keyFile: credentialsPath,
+    scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+  });
+} else {
+  // Gunakan environment variables (.env / Vercel) jika credentials.json tidak ada
+  auth = new google.auth.GoogleAuth({
+    credentials: {
+      client_email: process.env.GOOGLE_CLIENT_EMAIL,
+      private_key: (process.env.GOOGLE_PRIVATE_KEY || '').replace(/\\n/g, '\n').replace(/"/g, ''),
+    },
+    scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+  });
+}
 
 function getSpreadsheetId() {
   const id = process.env.GOOGLE_SHEET_ID;
