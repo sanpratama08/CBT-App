@@ -11,17 +11,22 @@ const credentialsPath = path.join(__dirname, 'credentials.json');
 let auth;
 
 if (fs.existsSync(credentialsPath)) {
-  // Gunakan file credentials.json langsung jika tersedia di lokal (bebas error parsing \n)
+  // Gunakan file credentials.json langsung jika tersedia di lokal (komputer Anda)
   auth = new google.auth.GoogleAuth({
     keyFile: credentialsPath,
     scopes: ['https://www.googleapis.com/auth/spreadsheets'],
   });
 } else {
-  // Gunakan environment variables (.env / Vercel) jika credentials.json tidak ada
+  // Gunakan Environment Variables (untuk Vercel) dengan penanganan private key yang aman
+  let privateKey = process.env.GOOGLE_PRIVATE_KEY || '';
+  if (privateKey.includes('\\n')) {
+    privateKey = privateKey.replace(/\\n/g, '\n');
+  }
+
   auth = new google.auth.GoogleAuth({
     credentials: {
       client_email: process.env.GOOGLE_CLIENT_EMAIL,
-      private_key: (process.env.GOOGLE_PRIVATE_KEY || '').replace(/\\n/g, '\n').replace(/"/g, ''),
+      private_key: privateKey,
     },
     scopes: ['https://www.googleapis.com/auth/spreadsheets'],
   });
@@ -30,7 +35,7 @@ if (fs.existsSync(credentialsPath)) {
 function getSpreadsheetId() {
   const id = process.env.GOOGLE_SHEET_ID;
   if (!id) {
-    throw new Error('GOOGLE_SHEET_ID belum diatur di dalam file .env');
+    throw new Error('GOOGLE_SHEET_ID belum diatur di dalam file .env / environment variables');
   }
   return id.trim();
 }
