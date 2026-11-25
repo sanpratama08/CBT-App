@@ -168,6 +168,161 @@ app.post('/api/soal/bulk-delete', async (req, res) => {
   }
 });
 
+// ------------------------------------------
+// IMPORT SOAL EXCEL (.XLSX) & WORD (.DOCX)
+// ------------------------------------------
+
+app.post('/api/admin/import-excel', upload.single('fileExcel'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'Pilih file Excel (.xlsx) terlebih dahulu!' });
+    }
+
+    const kelas = (req.body.kelas || 'Kelas 5').trim();
+    const mapel = (req.body.mapel || 'Umum').trim();
+
+    const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
+    const sheetName = workbook.SheetNames[0];
+    const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { defval: '' });
+
+    if (rows.length === 0) {
+      return res.status(400).json({ success: false, message: 'File Excel kosong atau format kolom tidak terbaca.' });
+    }
+
+    let berhasil = 0;
+    for (const row of rows) {
+      // Mendukung variasi nama header kolom Excel (besar/kecil)
+      const pertanyaan = row.pertanyaan || row.Pertanyaan || row.SOAL || row.Soal || '';
+      const opsiA = row.A || row.a || row.opsiA || row['Opsi A'] || '-';
+      const opsiB = row.B || row.b || row.opsiB || row['Opsi B'] || '-';
+      const opsiC = row.C || row.c || row.opsiC || row['Opsi C'] || '-';
+      const opsiD = row.D || row.d || row.opsiD || row['Opsi D'] || '-';
+      const jawabanBenar = row.jawaban || row.Jawaban || row['jawaban benar'] || row['Jawaban Benar'] || row.kunci || row.Kunci || '';
+
+      if (pertanyaan && jawabanBenar) {
+        await addQuestionToSheet(
+          pertanyaan.toString().trim(),
+          opsiA.toString().trim(),
+          opsiB.toString().trim(),
+          opsiC.toString().trim(),
+          opsiD.toString().trim(),
+          jawabanBenar.toString().trim(),
+          kelas,
+          mapel
+        );
+        berhasil++;
+      }
+    }
+
+    invalidateQuestionsCache();
+    res.json({ success: true, message: `Berhasil mengimpor ${berhasil} soal dari Excel untuk ${kelas} (${mapel})!` });
+  } catch (err) {
+    console.error('Error import Excel:', err);
+    res.status(500).json({ success: false, message: 'Gagal memproses file Excel: ' + err.message });
+  }
+});
+
+app.post('/api/admin/import-word', upload.single('fileWord'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'Pilih file Word (.docx) terlebih dahulu!' });
+    }
+
+    const kelas = (req.body.kelas || 'Kelas 5').trim();
+    const mapel = (req.body.mapel || 'Umum').trim();
+
+    const result = await mammoth.extractRawText({ buffer: req.file.buffer });
+    const lines = result.value
+      .split(/\r?\n/)
+      .map(line => line.trim())
+      .filter(line => line.length > 0);
+
+    let questions = [];
+    let currentQ = null;
+
+    for (const line of lines) {
+      // Lewati header bagian seperti "BAGIAN I..." atau judul dokumen
+      if (/^(BAGIAN|CONTOH SOAL|SDIT)/i.test(line)) continue;
+
+      // Deteksi awal nomor soal (contoh: "1. Istilah zakat...")
+      const matchSoal = line.match(/^(\d+)[\.\)]\s*(.+)/);
+      if (matchSoal) {
+        if (currentQ && currentQ.pertanyaan && currentQ.jawabanBenar) {
+          questions.push(currentQ);
+        }
+        currentQ = {
+          pertanyaan: matchSoal[2].trim(),
+          opsiA: '-',
+          opsiB: '-',
+          opsiC: '-',
+          opsiD: '-',
+          jawabanBenar: ''
+        };
+        continue;
+      }
+
+      if (!currentQ) continue;
+
+      // Deteksi opsi A, B, C, D
+      const matchOpsi = line.match(/^([A-Da-d])[\.\)]\s*(.+)/);
+      if (matchOpsi) {
+        const huruf = matchOpsi[1].toUpperCase();
+        const teksOpsi = matchOpsi[2].trim();
+        if (huruf === 'A') currentQ.opsiA = teksOpsi;
+        if (huruf === 'B') currentQ.opsiB = teksOpsi;
+        if (huruf === 'C') currentQ.opsiC = teksOpsi;
+        if (huruf === 'D') currentQ.opsiD = teksOpsi;
+        continue;
+      }
+
+      // Deteksi Kunci Jawaban PG ("Kunci: A") atau Isian ("Kunci Teks: Suci")
+      const matchKunci = line.match(/^Kunci(?:\s*Teks)?\s*:\s*(.+)/i);
+      if (matchKunci) {
+        currentQ.jawabanBenar = matchKunci[1].trim();
+        continue;
+      }
+
+      // Jika pertanyaan lebih dari 1 baris sebelum masuk ke opsi/kunci
+      if (currentQ.opsiA === '-' && !currentQ.jawabanBenar) {
+        currentQ.pertanyaan += ' ' + line;
+      }
+    }
+
+    // Simpan soal terakhir
+    if (currentQ && currentQ.pertanyaan && currentQ.jawabanBenar) {
+      questions.push(currentQ);
+    }
+
+    if (questions.length === 0) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Tidak ada soal yang terbaca. Pastikan format nomor (1. ...), opsi (A. ...), dan Kunci: ... sudah sesuai.' 
+      });
+    }
+
+    let berhasil = 0;
+    for (const q of questions) {
+      await addQuestionToSheet(
+        q.pertanyaan,
+        q.opsiA,
+        q.opsiB,
+        q.opsiC,
+        q.opsiD,
+        q.jawabanBenar,
+        kelas,
+        mapel
+      );
+      berhasil++;
+    }
+
+    invalidateQuestionsCache();
+    res.json({ success: true, message: `Berhasil mengimpor ${berhasil} soal dari Word untuk ${kelas} (${mapel})!` });
+  } catch (err) {
+    console.error('Error import Word:', err);
+    res.status(500).json({ success: false, message: 'Gagal memproses file Word: ' + err.message });
+  }
+});
+
 app.post('/api/admin/upload-gambar', uploadImage.single('gambar'), (req, res) => {
   if (!req.file) return res.status(400).json({ success: false, message: 'File gambar tidak ditemukan.' });
   res.json({ success: true, url: `/uploads/${req.file.filename}` });
