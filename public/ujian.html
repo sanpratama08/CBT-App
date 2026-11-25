@@ -5,14 +5,41 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Ujian Berlangsung - CBT SDIT NURUSSIROJ</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    h1, h2, h3, h4, .font-heading { font-family: 'Plus Jakarta Sans', sans-serif; }
+  </style>
 </head>
 <body class="bg-slate-100 font-sans text-slate-800 antialiased min-h-screen pb-12">
 
+  <!-- CONTAINER TOAST NOTIFIKASI (POJOK KANAN ATAS) -->
+  <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-3 max-w-sm w-full pointer-events-none"></div>
+
+  <!-- MODAL KONFIRMASI MODERN -->
+  <div id="custom-modal-backdrop" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 hidden items-center justify-center p-4 transition-opacity duration-200 opacity-0">
+    <div id="custom-modal-box" class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-100 transform scale-95 transition-transform duration-200">
+      <div class="flex items-start gap-4">
+        <div id="modal-icon" class="w-10 h-10 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center shrink-0 text-lg font-bold">!</div>
+        <div class="flex-1">
+          <h3 id="modal-title" class="text-base font-bold text-slate-800 font-heading">Konfirmasi Tindakan</h3>
+          <p id="modal-message" class="text-xs text-slate-600 mt-1.5 leading-relaxed">Apakah Anda yakin?</p>
+        </div>
+      </div>
+      <div class="mt-6 flex justify-end gap-2.5">
+        <button id="modal-btn-cancel" class="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 transition">Batal</button>
+        <button id="modal-btn-confirm" class="px-4 py-2 rounded-xl text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 shadow-xs transition">Ya, Lanjutkan</button>
+      </div>
+    </div>
+  </div>
+
   <!-- NAVBAR ATAS -->
-  <header class="bg-emerald-700 text-white shadow-md sticky top-0 z-50">
+  <header class="bg-emerald-700 text-white shadow-md sticky top-0 z-40">
     <div class="max-w-4xl mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-2">
       <div>
-        <h1 id="infoMapel" class="font-bold text-sm sm:text-base">Mata Pelajaran: -</h1>
+        <h1 id="infoMapel" class="font-bold text-sm sm:text-base font-heading">Mata Pelajaran: -</h1>
         <p id="infoSiswa" class="text-xs text-emerald-100">Siswa: - | Kelas: -</p>
       </div>
       <div class="bg-emerald-800 border border-emerald-600 px-3 py-1.5 rounded-xl text-center">
@@ -42,29 +69,103 @@
   </main>
 
   <script>
-    let session = JSON.parse(localStorage.getItem('cbt_session'));
-    if (!session) {
-      alert('Sesi login tidak ditemukan. Silakan login kembali.');
-      window.location.href = '/index.html';
+    // ==========================================
+    // SISTEM TOAST & MODAL KONFIRMASI MODERN
+    // ==========================================
+    function showToast(message, type = 'success', duration = 3500) {
+      const container = document.getElementById('toast-container');
+      if (!container) return;
+
+      const styles = {
+        success: { bg: 'bg-white border-emerald-500', iconBg: 'bg-emerald-100 text-emerald-600', icon: '✓', title: 'Berhasil' },
+        error:   { bg: 'bg-white border-red-500',     iconBg: 'bg-red-100 text-red-600',         icon: '✕', title: 'Peringatan' },
+        warning: { bg: 'bg-white border-amber-500',   iconBg: 'bg-amber-100 text-amber-600',     icon: '!', title: 'Perhatian' },
+        info:    { bg: 'bg-white border-blue-500',    iconBg: 'bg-blue-100 text-blue-600',       icon: 'i', title: 'Informasi' }
+      };
+
+      const s = styles[type] || styles.info;
+
+      const toast = document.createElement('div');
+      toast.className = `pointer-events-auto flex items-start gap-3 p-4 rounded-2xl shadow-lg border-l-4 ${s.bg} transform translate-x-full opacity-0 transition-all duration-300`;
+      toast.innerHTML = `
+        <div class="w-7 h-7 rounded-full ${s.iconBg} flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">${s.icon}</div>
+        <div class="flex-1 min-w-0">
+          <p class="text-xs font-bold text-slate-800">${s.title}</p>
+          <p class="text-xs text-slate-600 mt-0.5 break-words">${message}</p>
+        </div>
+        <button onclick="this.parentElement.remove()" class="text-slate-400 hover:text-slate-600 text-xs font-bold px-1">✕</button>
+      `;
+
+      container.appendChild(toast);
+
+      requestAnimationFrame(() => {
+        toast.classList.remove('translate-x-full', 'opacity-0');
+      });
+
+      setTimeout(() => {
+        toast.classList.add('translate-x-full', 'opacity-0');
+        setTimeout(() => toast.remove(), 300);
+      }, duration);
     }
 
-    document.getElementById('infoSiswa').textContent = `Siswa: ${session.nama} (${session.username}) | Kelas: ${session.kelas}`;
-    document.getElementById('infoMapel').textContent = `Mata Pelajaran: ${session.mapel}`;
+    function showConfirm(message, title = 'Konfirmasi', confirmText = 'Ya, Lanjutkan', isDanger = false) {
+      return new Promise((resolve) => {
+        const backdrop = document.getElementById('custom-modal-backdrop');
+        const box = document.getElementById('custom-modal-box');
+        const btnConfirm = document.getElementById('modal-btn-confirm');
+        const btnCancel = document.getElementById('modal-btn-cancel');
+        const iconEl = document.getElementById('modal-icon');
+
+        document.getElementById('modal-title').textContent = title;
+        document.getElementById('modal-message').textContent = message;
+        btnConfirm.textContent = confirmText;
+
+        if (isDanger) {
+          btnConfirm.className = 'px-4 py-2 rounded-xl text-xs font-semibold text-white bg-red-600 hover:bg-red-700 shadow-xs transition';
+          iconEl.className = 'w-10 h-10 rounded-full bg-red-100 text-red-600 flex items-center justify-center shrink-0 text-lg font-bold';
+        } else {
+          btnConfirm.className = 'px-4 py-2 rounded-xl text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 shadow-xs transition';
+          iconEl.className = 'w-10 h-10 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0 text-lg font-bold';
+        }
+
+        backdrop.classList.remove('hidden');
+        backdrop.classList.add('flex');
+        requestAnimationFrame(() => {
+          backdrop.classList.remove('opacity-0');
+          box.classList.remove('scale-95');
+        });
+
+        const close = (result) => {
+          backdrop.classList.add('opacity-0');
+          box.classList.add('scale-95');
+          setTimeout(() => {
+            backdrop.classList.add('hidden');
+            backdrop.classList.remove('flex');
+            resolve(result);
+          }, 200);
+        };
+
+        btnConfirm.onclick = () => close(true);
+        btnCancel.onclick = () => close(false);
+      });
+    }
+
+    // ==========================================
+    // LOGIKA UTAMA UJIAN
+    // ==========================================
+    let session = JSON.parse(localStorage.getItem('cbt_session'));
+    if (!session) {
+      window.location.href = '/index.html';
+    } else {
+      document.getElementById('infoSiswa').textContent = `Siswa: ${session.nama} (${session.username}) | Kelas: ${session.kelas}`;
+      document.getElementById('infoMapel').textContent = `Mata Pelajaran: ${session.mapel}`;
+    }
 
     let dataPG = [];
     let dataIsian = [];
     let jawabanSiswa = {};
     let warnings = 0;
     let timerInterval, heartbeatInterval;
-
-    function shuffleArray(array) {
-      let arr = [...array];
-      for (let i = arr.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [arr[i], arr[j]] = [arr[j], arr[i]];
-      }
-      return arr;
-    }
 
     async function muatSoal() {
       try {
@@ -84,12 +185,12 @@
           mulaiTimer(result.durasiMenit || 60);
           mulaiHeartbeat();
         } else {
-          alert(result.message || 'Gagal memuat soal.');
-          window.location.href = '/index.html';
+          showToast(result.message || 'Gagal memuat soal.', 'error');
+          setTimeout(() => { window.location.href = '/index.html'; }, 2000);
         }
       } catch (err) {
         console.error(err);
-        alert('Terjadi kesalahan saat memuat soal ujian.');
+        showToast('Terjadi kesalahan saat memuat soal ujian.', 'error');
       }
     }
 
@@ -172,7 +273,7 @@
       timerInterval = setInterval(() => {
         if (totalDetik <= 0) {
           clearInterval(timerInterval);
-          alert('Waktu ujian habis! Ujian dikumpulkan otomatis.');
+          showToast('Waktu ujian habis! Ujian dikumpulkan otomatis.', 'warning', 5000);
           submitUjian();
           return;
         }
@@ -190,24 +291,25 @@
           warnings++;
           document.getElementById('warningBanner').classList.remove('hidden');
           document.getElementById('warningCount').textContent = warnings;
+          showToast(`Peringatan! Anda meninggalkan halaman ujian (${warnings}/3).`, 'warning');
           if (warnings >= 3) {
-            alert('Anda keluar halaman 3 kali. Ujian dikumpulkan otomatis!');
+            showToast('Anda keluar halaman sebanyak 3 kali. Ujian dikumpulkan otomatis!', 'error', 5000);
             submitUjian();
           }
         }
       });
     }
 
-    function konfirmasiSubmit() {
-      if (confirm('Yakin ingin mengumpulkan ujian sekarang?')) {
+    async function konfirmasiSubmit() {
+      const yakin = await showConfirm('Yakin ingin mengumpulkan ujian sekarang? Pastikan seluruh soal telah dijawab.', 'Konfirmasi Pengumpulan', 'Ya, Kirim Ujian', false);
+      if (yakin) {
         submitUjian();
       }
     }
 
     async function submitUjian() {
       clearInterval(timerInterval);
-      clearInterval(heartbeatInterval);
-
+      
       try {
         const res = await fetch('/api/submit', {
           method: 'POST',
@@ -216,14 +318,16 @@
         });
         const result = await res.json();
         if (result.success) {
-          alert(`Ujian Selesai!\nNilai Anda: ${result.nilai} (Benar ${result.benar} dari ${result.totalSoal} soal).`);
+          showToast(`Ujian Selesai! Nilai Anda: ${result.nilai} (Benar ${result.benar} dari ${result.totalSoal} soal).`, 'success', 6000);
           localStorage.removeItem('cbt_session');
-          window.location.href = '/index.html';
+          setTimeout(() => {
+            window.location.href = '/index.html';
+          }, 3500);
         } else {
-          alert('Gagal mengirim jawaban.');
+          showToast('Gagal mengirim jawaban: ' + (result.message || 'Kesalahan server'), 'error');
         }
       } catch (err) {
-        alert('Kesalahan jaringan.');
+        showToast('Kesalahan jaringan saat mengirim jawaban.', 'error');
       }
     }
 
