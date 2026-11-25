@@ -346,34 +346,53 @@ app.post('/api/soal', async (req, res) => {
 });
 
 app.get('/api/admin/config', async (req, res) => {
-  const sheetConfigs = await getConfigsFromSheet();
-  if (Array.isArray(sheetConfigs)) classConfigs = sheetConfigs;
-  res.json({ success: true, configs: classConfigs });
+  try {
+    const sheetConfigs = await getConfigsFromSheet();
+    if (Array.isArray(sheetConfigs)) {
+      classConfigs = sheetConfigs;
+    }
+    res.json({ success: true, configs: classConfigs });
+  } catch (err) {
+    console.error('Error GET config:', err);
+    res.status(500).json({ success: false, message: 'Gagal membaca config: ' + err.message, configs: classConfigs });
+  }
 });
 
 app.post('/api/admin/config', async (req, res) => {
-  const { kelas, mapel, token, durasiMenit, jamMulai, jamSelesai } = req.body;
-  if (!kelas || !token || !durasiMenit) {
-    return res.status(400).json({ success: false, message: 'Field kelas, token, dan durasi wajib diisi!' });
+  try {
+    const { kelas, mapel, token, durasiMenit, jamMulai, jamSelesai } = req.body;
+    if (!kelas || !token || !durasiMenit) {
+      return res.status(400).json({ success: false, message: 'Field kelas, token, dan durasi wajib diisi!' });
+    }
+    
+    const existingIdx = classConfigs.findIndex(c => c.token.toUpperCase() === token.trim().toUpperCase());
+    const newConfig = { 
+      kelas: kelas.trim(), 
+      mapel: (mapel || 'Umum').trim(), 
+      token: token.trim().toUpperCase(), 
+      durasiMenit: parseInt(durasiMenit, 10),
+      jamMulai: jamMulai ? jamMulai.trim() : '',
+      jamSelesai: jamSelesai ? jamSelesai.trim() : ''
+    };
+
+    if (existingIdx >= 0) classConfigs[existingIdx] = newConfig;
+    else classConfigs.push(newConfig);
+
+    // Cek hasil penyimpanan ke Google Sheets secara eksplisit
+    const saveResult = await saveConfigsToSheet(classConfigs);
+    if (saveResult && saveResult.success === false) {
+      return res.status(500).json({ 
+        success: false, 
+        message: 'Gagal menyimpan ke Google Sheets: ' + (saveResult.message || 'Periksa tab Config di Spreadsheet') 
+      });
+    }
+
+    res.json({ success: true, message: 'Token berkala berhasil disimpan ke Google Sheets!', configs: classConfigs });
+  } catch (err) {
+    console.error('Error POST config:', err);
+    res.status(500).json({ success: false, message: 'Terjadi kesalahan server: ' + err.message });
   }
-  
-  const existingIdx = classConfigs.findIndex(c => c.token.toUpperCase() === token.trim().toUpperCase());
-  const newConfig = { 
-    kelas: kelas.trim(), 
-    mapel: (mapel || 'Umum').trim(), 
-    token: token.trim().toUpperCase(), 
-    durasiMenit: parseInt(durasiMenit, 10),
-    jamMulai: jamMulai ? jamMulai.trim() : '',
-    jamSelesai: jamSelesai ? jamSelesai.trim() : ''
-  };
-
-  if (existingIdx >= 0) classConfigs[existingIdx] = newConfig;
-  else classConfigs.push(newConfig);
-
-  await saveConfigsToSheet(classConfigs);
-  res.json({ success: true, message: `Token berkala berhasil disimpan!`, configs: classConfigs });
 });
-
 app.delete('/api/admin/config/:token', async (req, res) => {
   const { token } = req.params;
   classConfigs = classConfigs.filter(c => c.token.toUpperCase() !== token.trim().toUpperCase());
