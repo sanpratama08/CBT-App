@@ -504,25 +504,33 @@ app.post('/api/submit', async (req, res) => {
     const { nama, username, jawabanSiswa, kelas, mapel } = req.body;
     if (!nama || !username) return res.status(400).json({ success: false, message: 'Data tidak lengkap!' });
 
-    const allQuestions = await getQuestionsCached();
-    let benar = 0;
-    const jawabanData = jawabanSiswa || {};
-    const totalSoal = allQuestions.length;
+   allQuestions.forEach(q => {
+  const jawabSiswa = (jawabanData[q.id] || '').toString().trim().toLowerCase();
+  let rawKunci = (q.jawaban_benar || '').toString().trim();
 
-    allQuestions.forEach(q => {
-      const jawabSiswa = (jawabanData[q.id] || '').toString().trim().toLowerCase();
-      let kunci = (q.jawaban_benar || '').toString().trim().toLowerCase();
+  if (q.tipe === 'isian') {
+    // 1. Pecah kunci jawaban berdasarkan pemisah "|" (atau koma ",")
+    // Contoh: "Kairo | Cairo | Al-Qairo" menjadi array ['kairo', 'cairo', 'al-qairo']
+    const alternatifKunci = rawKunci
+      .split('|') // Bisa diganti atau ditambah .split(/[,|]/) jika ingin support koma
+      .map(k => k.trim().toLowerCase());
 
-      // Jika kunci berupa huruf A/B/C/D, konversi ke teks aslinya
-      if (['a', 'b', 'c', 'd'].includes(kunci)) {
-        const idxMap = { a: 0, b: 1, c: 2, d: 3 };
-        kunci = (q.opsi[idxMap[kunci]]?.text || '').toLowerCase();
-      }
-
-      if (jawabSiswa === kunci && jawabSiswa !== '') {
-        benar++;
-      }
-    });
+    // 2. Cek apakah jawaban siswa cocok dengan salah satu alternatif kunci
+    if (alternatifKunci.includes(jawabSiswa) && jawabSiswa !== '') {
+      benar++;
+    }
+  } else {
+    // Logika untuk Pilihan Ganda (tetap seperti biasa)
+    let kunci = rawKunci.toLowerCase();
+    if (['a', 'b', 'c', 'd'].includes(kunci)) {
+      const idxMap = { a: 0, b: 1, c: 2, d: 3 };
+      kunci = (q.opsi[idxMap[kunci]]?.text || '').toLowerCase();
+    }
+    if (jawabSiswa === kunci && jawabSiswa !== '') {
+      benar++;
+    }
+  }
+});
 
     const nilai = totalSoal > 0 ? parseFloat(((benar / totalSoal) * 100).toFixed(1)) : 0;
 
