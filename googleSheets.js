@@ -271,28 +271,39 @@ async function getResultsFromSheet() {
 
 // 7. Ambil & Simpan Konfigurasi Token Permanen di Tab 'Config'
 // Membaca Config termasuk Jam Mulai & Selesai
-async function getConfigsFromSheet(sheetName = 'Config') {
+async function saveConfigsToSheet(configs, sheetName = 'Config') {
   try {
     const client = await auth.getClient();
     const googleSheets = google.sheets({ version: 'v4', auth: client });
 
-    const response = await googleSheets.spreadsheets.values.get({
+    // Bersihkan dulu baris lama
+    await googleSheets.spreadsheets.values.clear({
       spreadsheetId: getSpreadsheetId(),
-      range: `${sheetName}!A2:F`,
+      range: `${sheetName}!A2:F100`,
     });
 
-    const rows = response.data.values || [];
-    return rows.map((row) => ({
-      kelas: row[0] || '',
-      mapel: row[1] || '',
-      token: row[2] || '',
-      durasiMenit: parseInt(row[3], 10) || 60,
-      jamMulai: row[4] || '',   // Format "07:30"
-      jamSelesai: row[5] || ''  // Format "09:30"
-    }));
+    const values = configs.map(c => [
+      c.kelas || '', 
+      c.mapel || '', 
+      c.token || '', 
+      c.durasiMenit || 60, 
+      c.jamMulai || '', 
+      c.jamSelesai || ''
+    ]);
+
+    if (values.length > 0) {
+      await googleSheets.spreadsheets.values.update({
+        spreadsheetId: getSpreadsheetId(),
+        range: `${sheetName}!A2:F${values.length + 1}`,
+        valueInputOption: 'USER_ENTERED',
+        requestBody: { values },
+      });
+    }
+
+    return { success: true };
   } catch (error) {
-    console.error('Gagal mengambil config:', error.message);
-    return [];
+    console.error('Gagal menyimpan config:', error.message);
+    return { success: false, message: error.message };
   }
 }
 

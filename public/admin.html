@@ -17,52 +17,25 @@
 </head>
 <body class="bg-slate-50 text-slate-800 antialiased h-screen flex overflow-hidden">
 
-  <!-- SIDEBAR NAVIGASI KIRI -->
-  <aside id="sidebar" class="w-64 bg-slate-900 text-slate-300 flex flex-col transition-all duration-300 z-30 shrink-0 h-full">
+ <!-- SIDEBAR NAVIGASI KIRI -->
+<aside id="sidebar" class="w-64 bg-slate-900 text-slate-300 flex flex-col transition-all duration-300 z-30 shrink-0 h-full">
+  
+  <!-- HEADER LOGO & TOMBOL TOGGLE (Pastikan ada shrink-0 & overflow-hidden) -->
+  <div class="p-4 border-b border-slate-800 flex flex-col gap-3 shrink-0 overflow-hidden">
+    <div class="whitespace-nowrap">
+      <h1 class="text-base font-extrabold text-white tracking-tight font-heading">CBT Nurussiroj</h1>
+      <p class="text-[11px] font-medium text-slate-400 mt-0.5">Panel Kontrol Administrator</p>
+    </div>
     
-    <!-- HEADER LOGO & TOMBOL TOGGLE -->
-    <div class="p-4 border-b border-slate-800 flex flex-col gap-3 shrink-0">
-      <div>
-        <h1 class="text-base font-extrabold text-white tracking-tight font-heading">CBT Nurussiroj</h1>
-        <p class="text-[11px] font-medium text-slate-400 mt-0.5">Panel Kontrol Administrator</p>
-      </div>
-      
-      <button onclick="toggleSidebar()" class="w-full bg-slate-800/80 hover:bg-slate-800 text-slate-400 hover:text-white py-1.5 px-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition" title="Lipat / Buka Sidebar">
-        <svg id="toggleIcon" class="w-4 h-4 transition-transform duration-300 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"></path>
-        </svg>
-        <span class="sidebar-text text-[11px]">Sembunyikan Menu</span>
-      </button>
-    </div>
-
-    <!-- MENU NAVIGASI -->
-    <nav class="flex-1 p-3 space-y-1.5 overflow-y-auto">
-      <a href="#" onclick="switchTab('beranda')" id="nav-beranda" class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold bg-blue-600 text-white shadow-sm transition group">
-        <span class="text-base shrink-0">🏠</span> 
-        <span class="sidebar-text whitespace-nowrap">Beranda Utama</span>
-      </a>
-      <a href="#" onclick="switchTab('monitoring')" id="nav-monitoring" class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold hover:bg-slate-800 hover:text-white transition group">
-        <span class="text-base shrink-0">📡</span> 
-        <span class="sidebar-text whitespace-nowrap">Monitoring Siswa</span>
-      </a>
-      <a href="#" onclick="switchTab('token')" id="nav-token" class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold hover:bg-slate-800 hover:text-white transition group">
-        <span class="text-base shrink-0">🔑</span> 
-        <span class="sidebar-text whitespace-nowrap">Token & Jadwal</span>
-      </a>
-      <a href="#" onclick="switchTab('soal')" id="nav-soal" class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold hover:bg-slate-800 hover:text-white transition group">
-        <span class="text-base shrink-0">📚</span> 
-        <span class="sidebar-text whitespace-nowrap">Bank Soal & Import</span>
-      </a>
-      <a href="#" onclick="switchTab('rekap')" id="nav-rekap" class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold hover:bg-slate-800 hover:text-white transition group">
-        <span class="text-base shrink-0">🏆</span> 
-        <span class="sidebar-text whitespace-nowrap">Rekap & Cetak Nilai</span>
-      </a>
-    </nav>
-
-    <div class="p-3 border-t border-slate-800 text-[10px] text-slate-500 text-center sidebar-text shrink-0">
-      CBT v3.5 • Nurussiroj
-    </div>
-  </aside>
+    <button onclick="toggleSidebar()" class="w-full bg-slate-800/80 hover:bg-slate-800 text-slate-400 hover:text-white py-1.5 px-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition" title="Lipat / Buka Sidebar">
+      <svg id="toggleIcon" class="w-4 h-4 transition-transform duration-300 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"></path>
+      </svg>
+      <span class="sidebar-text text-[11px]">Sembunyikan Menu</span>
+    </button>
+  </div>
+  ...
+</aside>
 
   <!-- KONTEN UTAMA KANAN -->
   <div class="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
