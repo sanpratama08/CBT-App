@@ -738,41 +738,67 @@
     }
 
     document.getElementById('formConfig').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const btn = document.getElementById('btnSimpanToken');
-      btn.disabled = true;
-      btn.textContent = 'Menyimpan...';
+  e.preventDefault();
+  const btn = document.getElementById('btnSimpanToken');
+  btn.disabled = true;
+  btn.textContent = 'Menyimpan...';
 
-      try {
-        const payload = {
-          kelas: document.getElementById('configKelas').value,
-          mapel: document.getElementById('configMapel').value,
-          token: document.getElementById('configToken').value,
-          durasiMenit: document.getElementById('configDurasi').value,
-          jamMulai: '',
-          jamSelesai: ''
-        };
-        const res = await fetch('/api/admin/config', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-        const result = await res.json();
-        
-        if (result.success) {
-          showToast(result.message, 'success');
-          document.getElementById('formConfig').reset();
-          loadConfigs();
-        } else {
-          showToast(result.message || 'Gagal menyimpan token.', 'error');
-        }
-      } catch (err) {
-        showToast('Terjadi kesalahan jaringan saat menyimpan token.', 'error');
-      } finally {
-        btn.disabled = false;
-        btn.textContent = 'Simpan Token Ujian';
-      }
+  try {
+    const payload = {
+      kelas: document.getElementById('configKelas').value,
+      mapel: document.getElementById('configMapel').value,
+      token: document.getElementById('configToken').value,
+      durasiMenit: document.getElementById('configDurasi').value,
+      jamMulai: '',
+      jamSelesai: ''
+    };
+    const res = await fetch('/api/admin/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
     });
+    const result = await res.json();
+    
+    if (result.success) {
+      showToast(result.message, 'success');
+      document.getElementById('formConfig').reset();
+      
+      // Langsung render ulang tabel dari data response server
+      if (result.configs) {
+        renderConfigsTable(result.configs);
+      } else {
+        loadConfigs();
+      }
+    } else {
+      showToast(result.message || 'Gagal menyimpan token.', 'error');
+    }
+  } catch (err) {
+    showToast('Terjadi kesalahan jaringan saat menyimpan token.', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Simpan Token Ujian';
+  }
+});
+
+// Fungsi pembantu untuk merender tabel config langsung
+function renderConfigsTable(configs) {
+  const tbody = document.getElementById('tbodyConfigs');
+  if (!configs || configs.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5" class="py-6 text-center text-slate-400">Belum ada token aktif.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = configs.map(c => `
+    <tr class="hover:bg-slate-50 transition">
+      <td class="py-3 px-3 font-semibold">${c.kelas}</td>
+      <td class="py-3 px-3">${c.mapel}</td>
+      <td class="py-3 px-3 font-mono font-bold text-blue-600">${c.token}</td>
+      <td class="py-3 px-3">${c.durasiMenit} Menit</td>
+      <td class="py-3 px-3 text-center">
+        <button onclick="hapusConfig('${c.token}')" class="bg-red-50 hover:bg-red-100 text-red-600 px-2.5 py-1 rounded-lg font-semibold text-[11px] transition">Hapus</button>
+      </td>
+    </tr>
+  `).join('');
+}
 
     async function hapusConfig(token) {
       const yakin = await showConfirm(`Apakah Anda yakin ingin menghapus token ${token}? Siswa tidak akan bisa login menggunakan token ini lagi.`, 'Hapus Token Ujian', 'Ya, Hapus', true);

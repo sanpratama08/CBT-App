@@ -282,6 +282,7 @@ async function saveConfigsToSheet(configs, sheetName = 'Config') {
     const client = await auth.getClient();
     const googleSheets = google.sheets({ version: 'v4', auth: client });
 
+    // Pastikan tab Config ada dan bersihkan rentang baris lama
     await googleSheets.spreadsheets.values.clear({
       spreadsheetId: getSpreadsheetId(),
       range: `${sheetName}!A2:F100`,
@@ -307,9 +308,9 @@ async function saveConfigsToSheet(configs, sheetName = 'Config') {
 
     return { success: true };
   } catch (error) {
-    console.warn('Peringatan Sync Config ke Sheets:', error.message);
-    // Mengembalikan objek sukses agar panel admin tidak memunculkan popup error 500
-    return { success: true };
+    console.error('Gagal sync ke Google Sheets:', error.message);
+    // Kembalikan status false agar kita tahu jika masih ada error Google Auth
+    return { success: false, message: error.message };
   }
 }
 

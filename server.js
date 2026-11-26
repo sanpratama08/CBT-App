@@ -353,7 +353,7 @@ app.get('/api/admin/config', async (req, res) => {
 
 app.post('/api/admin/config', async (req, res) => {
   try {
-    const { kelas, mapel, token, durasiMenit, jamMulai, jamSelesai } = req.body;
+    const { kelas, mapel, token, durasiMenit } = req.body;
     if (!kelas || !token || !durasiMenit) {
       return res.status(400).json({ success: false, message: 'Field kelas, token, dan durasi wajib diisi!' });
     }
@@ -364,22 +364,22 @@ app.post('/api/admin/config', async (req, res) => {
       mapel: (mapel || 'Umum').trim(), 
       token: token.trim().toUpperCase(), 
       durasiMenit: parseInt(durasiMenit, 10),
-      jamMulai: jamMulai ? jamMulai.trim() : '',
-      jamSelesai: jamSelesai ? jamSelesai.trim() : ''
+      jamMulai: '',
+      jamSelesai: ''
     };
 
     if (existingIdx >= 0) classConfigs[existingIdx] = newConfig;
     else classConfigs.push(newConfig);
 
+    // Simpan ke Google Sheets
     const saveResult = await saveConfigsToSheet(classConfigs);
-    if (saveResult && saveResult.success === false) {
-      return res.status(500).json({ 
-        success: false, 
-        message: 'Gagal menyimpan ke Google Sheets: ' + (saveResult.message || 'Periksa tab Config di Spreadsheet') 
-      });
-    }
-
-    res.json({ success: true, message: 'Token berhasil disimpan ke Google Sheets!', configs: classConfigs });
+    
+    // Kirim respons dengan data configs terbaru agar langsung muncul di tabel admin
+    res.json({ 
+      success: true, 
+      message: saveResult.success ? 'Token berhasil disimpan ke Google Sheets!' : 'Token disimpan di memori (Gagal sinkron Sheets: ' + saveResult.message + ')', 
+      configs: classConfigs 
+    });
   } catch (err) {
     console.error('Error POST config:', err);
     res.status(500).json({ success: false, message: 'Terjadi kesalahan server: ' + err.message });
