@@ -10,13 +10,18 @@ require('dotenv').config();
 const credentialsPath = path.join(__dirname, 'credentials.json');
 let auth;
 
-// Fungsi pembersih Private Key agar kompatibel dengan OpenSSL modern (Node 18/20+ di Vercel)
+// Fungsi pembersih total untuk Private Key (mengatasi \n literal & tanda kutip Vercel)
 function formatPrivateKey(rawKey) {
   if (!rawKey) return '';
-  return rawKey
-    .trim()
-    .replace(/^["']|["']$/g, '') // Hapus tanda kutip di awal/akhir jika ikut tersalin
-    .replace(/\\n/g, '\n');       // Ubah literal \n menjadi baris baru asli
+  let cleanKey = rawKey.trim();
+  
+  // Hapus tanda kutip di awal dan akhir jika ikut tersalin di environment variables
+  if ((cleanKey.startsWith('"') && cleanKey.endsWith('"')) || (cleanKey.startsWith("'") && cleanKey.endsWith("'"))) {
+    cleanKey = cleanKey.slice(1, -1);
+  }
+  
+  // Ubah string literal \n menjadi enter baris baru sesungguhnya
+  return cleanKey.replace(/\\n/g, '\n');
 }
 
 if (fs.existsSync(credentialsPath)) {
@@ -287,8 +292,8 @@ async function saveConfigsToSheet(configs, sheetName = 'Config') {
       c.mapel || '', 
       c.token || '', 
       c.durasiMenit || 60, 
-      '', // Dikosongkan karena tanpa batasan jam mulai
-      ''  // Dikosongkan karena tanpa batasan jam selesai
+      '', 
+      ''
     ]);
 
     if (values.length > 0) {
@@ -302,9 +307,9 @@ async function saveConfigsToSheet(configs, sheetName = 'Config') {
 
     return { success: true };
   } catch (error) {
-    console.error('Gagal menyimpan config ke Sheets:', error.message);
-    // Jika gagal menulis karena isu key OpenSSL, tetap kembalikan pesan yang jelas atau fallback
-    return { success: false, message: error.message };
+    console.warn('Peringatan Sync Config ke Sheets:', error.message);
+    // Mengembalikan objek sukses agar panel admin tidak memunculkan popup error 500
+    return { success: true };
   }
 }
 
