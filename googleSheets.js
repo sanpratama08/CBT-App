@@ -10,22 +10,28 @@ require('dotenv').config();
 const credentialsPath = path.join(__dirname, 'credentials.json');
 let auth;
 
+// Fungsi pembersih Private Key agar kompatibel dengan OpenSSL modern (Node 18/20+ di Vercel)
+function formatPrivateKey(rawKey) {
+  if (!rawKey) return '';
+  return rawKey
+    .trim()
+    .replace(/^["']|["']$/g, '') // Hapus tanda kutip di awal/akhir jika ikut tersalin
+    .replace(/\\n/g, '\n');       // Ubah literal \n menjadi baris baru asli
+}
+
 if (fs.existsSync(credentialsPath)) {
-  // Gunakan file credentials.json langsung jika tersedia di lokal (komputer Anda)
+  // Gunakan file credentials.json langsung jika tersedia di komputer lokal
   auth = new google.auth.GoogleAuth({
     keyFile: credentialsPath,
     scopes: ['https://www.googleapis.com/auth/spreadsheets'],
   });
 } else {
-  // Gunakan Environment Variables (untuk Vercel) dengan penanganan private key yang aman
-  let privateKey = process.env.GOOGLE_PRIVATE_KEY || '';
-  if (privateKey.includes('\\n')) {
-    privateKey = privateKey.replace(/\\n/g, '\n');
-  }
+  // Gunakan Environment Variables (untuk Vercel) dengan pembersihan format key
+  const privateKey = formatPrivateKey(process.env.GOOGLE_PRIVATE_KEY);
 
   auth = new google.auth.GoogleAuth({
     credentials: {
-      client_email: process.env.GOOGLE_CLIENT_EMAIL,
+      client_email: (process.env.GOOGLE_CLIENT_EMAIL || '').trim(),
       private_key: privateKey,
     },
     scopes: ['https://www.googleapis.com/auth/spreadsheets'],
@@ -51,7 +57,7 @@ async function getQuestionsFromSheet(sheetName = 'Soal') {
 
     const response = await googleSheets.spreadsheets.values.get({
       spreadsheetId: getSpreadsheetId(),
-      range: `${sheetName}!A2:H1000`,
+      range: `${sheetName}!A2:K1000`,
     });
 
     const rows = response.data.values || [];
@@ -127,7 +133,7 @@ async function deleteQuestionFromSheet(idSoal, sheetName = 'Soal') {
 
     for (let i = 0; i < rows.length; i++) {
       if (rows[i][0] === idSoal) {
-        rowIndex = i + 2; // Baris spreadsheet mulai dari 2 (karena header di baris 1)
+        rowIndex = i + 2;
         break;
       }
     }
@@ -238,7 +244,7 @@ async function getResultsFromSheet(sheetName = 'Hasil') {
 }
 
 // ------------------------------------------
-// 3. MANAJEMEN TOKEN & JADWAL (TAB: Config)
+// 3. MANAJEMEN TOKEN UJIAN (TAB: Config)
 // ------------------------------------------
 
 async function getConfigsFromSheet(sheetName = 'Config') {
@@ -248,7 +254,7 @@ async function getConfigsFromSheet(sheetName = 'Config') {
 
     const response = await googleSheets.spreadsheets.values.get({
       spreadsheetId: getSpreadsheetId(),
-      range: `${sheetName}!A2:F100`, // Mencakup Kolom A s/d F
+      range: `${sheetName}!A2:F100`,
     });
 
     const rows = response.data.values || [];
@@ -271,7 +277,6 @@ async function saveConfigsToSheet(configs, sheetName = 'Config') {
     const client = await auth.getClient();
     const googleSheets = google.sheets({ version: 'v4', auth: client });
 
-    // Bersihkan dulu baris lama pada rentang A2:F100
     await googleSheets.spreadsheets.values.clear({
       spreadsheetId: getSpreadsheetId(),
       range: `${sheetName}!A2:F100`,
@@ -282,8 +287,8 @@ async function saveConfigsToSheet(configs, sheetName = 'Config') {
       c.mapel || '', 
       c.token || '', 
       c.durasiMenit || 60, 
-      c.jamMulai || '', 
-      c.jamSelesai || ''
+      '', // Dikosongkan karena tanpa batasan jam mulai
+      ''  // Dikosongkan karena tanpa batasan jam selesai
     ]);
 
     if (values.length > 0) {
@@ -298,6 +303,7 @@ async function saveConfigsToSheet(configs, sheetName = 'Config') {
     return { success: true };
   } catch (error) {
     console.error('Gagal menyimpan config ke Sheets:', error.message);
+    // Jika gagal menulis karena isu key OpenSSL, tetap kembalikan pesan yang jelas atau fallback
     return { success: false, message: error.message };
   }
 }
