@@ -340,7 +340,25 @@
     }
 
     async function konfirmasiSubmit() {
-      const yakin = await showConfirm('Yakin ingin mengumpulkan ujian sekarang? Pastikan seluruh soal telah dijawab.', 'Konfirmasi Pengumpulan', 'Ya, Kirim Ujian', false);
+      // Hitung jumlah soal total dan yang sudah diisi
+      const totalSoal = dataPG.length + dataIsian.length;
+      let terjawab = 0;
+      
+      for (let id in jawabanSiswa) {
+        if (jawabanSiswa[id] !== undefined && String(jawabanSiswa[id]).trim() !== '') {
+          terjawab++;
+        }
+      }
+
+      // Jika masih ada soal yang kosong, tolak dan beri peringatan
+      if (terjawab < totalSoal) {
+        const sisaKosong = totalSoal - terjawab;
+        showToast(`Masih ada ${sisaKosong} soal yang belum Anda isi! Silakan selesaikan semua soal terlebih dahulu.`, 'warning', 5000);
+        return; // Menghentikan proses submit
+      }
+
+      // Jika semua sudah terisi, lanjutkan konfirmasi pengumpulan
+      const yakin = await showConfirm(`Semua (${totalSoal}) soal telah dijawab. Yakin ingin mengumpulkan ujian sekarang?`, 'Konfirmasi Pengumpulan', 'Ya, Kirim Ujian', false);
       if (yakin) {
         submitUjian();
       }
