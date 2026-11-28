@@ -15,7 +15,7 @@
 </head>
 <body class="bg-slate-100 font-sans text-slate-800 antialiased min-h-screen pb-12">
 
-  <!-- CONTAINER TOAST NOTIFIKASI (POJOK KANAN ATAS) -->
+  <!-- CONTAINER TOAST NOTIFIKASI -->
   <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-3 max-w-sm w-full pointer-events-none"></div>
 
   <!-- MODAL KONFIRMASI MODERN -->
@@ -69,9 +69,6 @@
   </main>
 
   <script>
-    // ==========================================
-    // SISTEM TOAST & MODAL KONFIRMASI MODERN
-    // ==========================================
     function showToast(message, type = 'success', duration = 3500) {
       const container = document.getElementById('toast-container');
       if (!container) return;
@@ -84,7 +81,6 @@
       };
 
       const s = styles[type] || styles.info;
-
       const toast = document.createElement('div');
       toast.className = `pointer-events-auto flex items-start gap-3 p-4 rounded-2xl shadow-lg border-l-4 ${s.bg} transform translate-x-full opacity-0 transition-all duration-300`;
       toast.innerHTML = `
@@ -97,11 +93,7 @@
       `;
 
       container.appendChild(toast);
-
-      requestAnimationFrame(() => {
-        toast.classList.remove('translate-x-full', 'opacity-0');
-      });
-
+      requestAnimationFrame(() => toast.classList.remove('translate-x-full', 'opacity-0'));
       setTimeout(() => {
         toast.classList.add('translate-x-full', 'opacity-0');
         setTimeout(() => toast.remove(), 300);
@@ -150,9 +142,6 @@
       });
     }
 
-    // ==========================================
-    // LOGIKA UTAMA UJIAN
-    // ==========================================
     let session = JSON.parse(localStorage.getItem('cbt_session'));
     if (!session) {
       window.location.href = '/index.html';
@@ -203,7 +192,6 @@
         return;
       }
 
-      // --- BAGIAN I: PILIHAN GANDA ---
       if (dataPG.length > 0) {
         const sectionPG = document.createElement('div');
         sectionPG.className = 'space-y-6';
@@ -235,7 +223,6 @@
         container.appendChild(sectionPG);
       }
 
-      // --- BAGIAN II: ISIAN SINGKAT ---
       if (dataIsian.length > 0) {
         const sectionIsian = document.createElement('div');
         sectionIsian.className = 'space-y-6 pt-4';
@@ -268,6 +255,17 @@
       jawabanSiswa[idSoal] = nilai;
     }
 
+    function hitungSoalTerjawab() {
+      let answered = 0;
+      const total = dataPG.length + dataIsian.length;
+      for (let id in jawabanSiswa) {
+        if (jawabanSiswa[id] !== undefined && String(jawabanSiswa[id]).trim() !== '') {
+          answered++;
+        }
+      }
+      return { answered, total };
+    }
+
     function mulaiTimer(durasiMenit) {
       let totalDetik = durasiMenit * 60;
       timerInterval = setInterval(() => {
@@ -286,16 +284,57 @@
     }
 
     function mulaiHeartbeat() {
+      // Kirim heartbeat berkala tiap 5 detik agar kedeteksi di admin
+      heartbeatInterval = setInterval(async () => {
+        try {
+          const { answered, total } = hitungSoalTerjawab();
+          await fetch('/api/ujian/heartbeat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              username: session.username,
+              nama: session.nama,
+              kelas: session.kelas,
+              mapel: session.mapel,
+              answeredCount: answered,
+              totalQuestions: total,
+              warnings: warnings,
+              status: 'Mengerjakan'
+            })
+          });
+        } catch (err) {
+          console.error('Gagal kirim heartbeat:', err);
+        }
+      }, 5000);
+
+      // Deteksi keluar tab / pindah jendela
       document.addEventListener('visibilitychange', () => {
         if (document.hidden) {
           warnings++;
           document.getElementById('warningBanner').classList.remove('hidden');
           document.getElementById('warningCount').textContent = warnings;
           showToast(`Peringatan! Anda meninggalkan halaman ujian (${warnings}/3).`, 'warning');
-          if (warnings >= 3) {
-            showToast('Anda keluar halaman sebanyak 3 kali. Ujian dikumpulkan otomatis!', 'error', 5000);
-            submitUjian();
-          }
+          
+          const { answered, total } = hitungSoalTerjawab();
+          fetch('/api/ujian/heartbeat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              username: session.username,
+              nama: session.nama,
+              kelas: session.kelas,
+              mapel: session.mapel,
+              answeredCount: answered,
+              totalQuestions: total,
+              warnings: warnings,
+              status: warnings >= 3 ? 'Diskualifikasi 3x' : 'Mengerjakan'
+            })
+          }).then(r => r.json()).then(res => {
+            if (res.forceSubmit || warnings >= 3) {
+              showToast('Anda keluar halaman sebanyak 3 kali. Ujian dikumpulkan otomatis!', 'error', 5000);
+              submitUjian();
+            }
+          }).catch(e => console.error(e));
         }
       });
     }
@@ -309,8 +348,26 @@
 
     async function submitUjian() {
       clearInterval(timerInterval);
+      clearInterval(heartbeatInterval);
       
       try {
+        const { answered, total } = hitungSoalTerjawab();
+        // Laporkan status selesai ke server monitoring
+        await fetch('/api/ujian/heartbeat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            username: session.username,
+            nama: session.nama,
+            kelas: session.kelas,
+            mapel: session.mapel,
+            answeredCount: answered,
+            totalQuestions: total,
+            warnings: warnings,
+            status: 'Selesai'
+          })
+        });
+
         const res = await fetch('/api/submit', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

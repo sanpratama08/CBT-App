@@ -17,7 +17,7 @@
 </head>
 <body class="bg-slate-50 text-slate-800 antialiased h-screen flex overflow-hidden">
 
-  <!-- CONTAINER TOAST NOTIFIKASI (POJOK KANAN ATAS) -->
+  <!-- CONTAINER TOAST NOTIFIKASI -->
   <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-3 max-w-sm w-full pointer-events-none"></div>
 
   <!-- MODAL KONFIRMASI MODERN -->
@@ -225,7 +225,7 @@
         </div>
       </section>
 
-      <!-- ================= TAB 3: TOKEN & JADWAL (TANPA BATASAN JAM) ================= -->
+      <!-- ================= TAB 3: TOKEN & JADWAL ================= -->
       <section id="tab-token" class="hidden space-y-6">
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div class="bg-white rounded-2xl p-5 shadow-xs border border-slate-200 space-y-4">
@@ -247,9 +247,6 @@
                 <label class="block text-xs font-semibold text-slate-700 mb-1">Durasi Ujian (Menit)</label>
                 <input type="number" id="configDurasi" value="60" min="10" required class="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none">
               </div>
-
-              <!-- Input Jam Mulai & Jam Selesai Dihapus agar token fleksibel tanpa batasan waktu -->
-
               <button type="submit" id="btnSimpanToken" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-xl text-xs transition shadow-sm mt-2">
                 Simpan Token Ujian
               </button>
@@ -471,7 +468,6 @@
       };
 
       const s = styles[type] || styles.info;
-
       const toast = document.createElement('div');
       toast.className = `pointer-events-auto flex items-start gap-3 p-4 rounded-2xl shadow-lg border-l-4 ${s.bg} transform translate-x-full opacity-0 transition-all duration-300`;
       toast.innerHTML = `
@@ -484,11 +480,7 @@
       `;
 
       container.appendChild(toast);
-
-      requestAnimationFrame(() => {
-        toast.classList.remove('translate-x-full', 'opacity-0');
-      });
-
+      requestAnimationFrame(() => toast.classList.remove('translate-x-full', 'opacity-0'));
       setTimeout(() => {
         toast.classList.add('translate-x-full', 'opacity-0');
         setTimeout(() => toast.remove(), 300);
@@ -558,9 +550,7 @@
         sidebar.classList.remove('w-20');
         sidebar.classList.add('w-64');
         toggleIcon.style.transform = 'rotate(0deg)';
-        setTimeout(() => {
-          textElements.forEach(el => el.style.display = 'block');
-        }, 150);
+        setTimeout(() => textElements.forEach(el => el.style.display = 'block'), 150);
       }
     }
 
@@ -711,9 +701,6 @@
       loadMonitoring();
     }
 
-    // ==========================================
-    // TOKEN UJIAN (TANPA BATASAN JAM)
-    // ==========================================
     async function loadConfigs() {
       try {
         const res = await fetch('/api/admin/config');
@@ -738,70 +725,67 @@
     }
 
     document.getElementById('formConfig').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const btn = document.getElementById('btnSimpanToken');
-  btn.disabled = true;
-  btn.textContent = 'Menyimpan...';
+      e.preventDefault();
+      const btn = document.getElementById('btnSimpanToken');
+      btn.disabled = true;
+      btn.textContent = 'Menyimpan...';
 
-  try {
-    const payload = {
-      kelas: document.getElementById('configKelas').value,
-      mapel: document.getElementById('configMapel').value,
-      token: document.getElementById('configToken').value,
-      durasiMenit: document.getElementById('configDurasi').value,
-      jamMulai: '',
-      jamSelesai: ''
-    };
-    const res = await fetch('/api/admin/config', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-    const result = await res.json();
-    
-    if (result.success) {
-      showToast(result.message, 'success');
-      document.getElementById('formConfig').reset();
-      
-      // Langsung render ulang tabel dari data response server
-      if (result.configs) {
-        renderConfigsTable(result.configs);
-      } else {
-        loadConfigs();
+      try {
+        const payload = {
+          kelas: document.getElementById('configKelas').value,
+          mapel: document.getElementById('configMapel').value,
+          token: document.getElementById('configToken').value,
+          durasiMenit: document.getElementById('configDurasi').value,
+          jamMulai: '',
+          jamSelesai: ''
+        };
+        const res = await fetch('/api/admin/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const result = await res.json();
+        
+        if (result.success) {
+          showToast(result.message, 'success');
+          document.getElementById('formConfig').reset();
+          if (result.configs) {
+            renderConfigsTable(result.configs);
+          } else {
+            loadConfigs();
+          }
+        } else {
+          showToast(result.message || 'Gagal menyimpan token.', 'error');
+        }
+      } catch (err) {
+        showToast('Terjadi kesalahan jaringan saat menyimpan token.', 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Simpan Token Ujian';
       }
-    } else {
-      showToast(result.message || 'Gagal menyimpan token.', 'error');
-    }
-  } catch (err) {
-    showToast('Terjadi kesalahan jaringan saat menyimpan token.', 'error');
-  } finally {
-    btn.disabled = false;
-    btn.textContent = 'Simpan Token Ujian';
-  }
-});
+    });
 
-// Fungsi pembantu untuk merender tabel config langsung
-function renderConfigsTable(configs) {
-  const tbody = document.getElementById('tbodyConfigs');
-  if (!configs || configs.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="5" class="py-6 text-center text-slate-400">Belum ada token aktif.</td></tr>';
-    return;
-  }
-  tbody.innerHTML = configs.map(c => `
-    <tr class="hover:bg-slate-50 transition">
-      <td class="py-3 px-3 font-semibold">${c.kelas}</td>
-      <td class="py-3 px-3">${c.mapel}</td>
-      <td class="py-3 px-3 font-mono font-bold text-blue-600">${c.token}</td>
-      <td class="py-3 px-3">${c.durasiMenit} Menit</td>
-      <td class="py-3 px-3 text-center">
-        <button onclick="hapusConfig('${c.token}')" class="bg-red-50 hover:bg-red-100 text-red-600 px-2.5 py-1 rounded-lg font-semibold text-[11px] transition">Hapus</button>
-      </td>
-    </tr>
-  `).join('');
-}
+    function renderConfigsTable(configs) {
+      const tbody = document.getElementById('tbodyConfigs');
+      if (!configs || configs.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="py-6 text-center text-slate-400">Belum ada token aktif.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = configs.map(c => `
+        <tr class="hover:bg-slate-50 transition">
+          <td class="py-3 px-3 font-semibold">${c.kelas}</td>
+          <td class="py-3 px-3">${c.mapel}</td>
+          <td class="py-3 px-3 font-mono font-bold text-blue-600">${c.token}</td>
+          <td class="py-3 px-3">${c.durasiMenit} Menit</td>
+          <td class="py-3 px-3 text-center">
+            <button onclick="hapusConfig('${c.token}')" class="bg-red-50 hover:bg-red-100 text-red-600 px-2.5 py-1 rounded-lg font-semibold text-[11px] transition">Hapus</button>
+          </td>
+        </tr>
+      `).join('');
+    }
 
     async function hapusConfig(token) {
-      const yakin = await showConfirm(`Apakah Anda yakin ingin menghapus token ${token}? Siswa tidak akan bisa login menggunakan token ini lagi.`, 'Hapus Token Ujian', 'Ya, Hapus', true);
+      const yakin = await showConfirm(`Apakah Anda yakin ingin menghapus token ${token}?`, 'Hapus Token Ujian', 'Ya, Hapus', true);
       if (!yakin) return;
 
       try {
@@ -847,7 +831,7 @@ function renderConfigsTable(configs) {
     }
 
     async function hapusSoal(id) {
-      const yakin = await showConfirm('Soal ini akan dihapus secara permanen dari Google Sheets. Lanjutkan?', 'Hapus Soal', 'Ya, Hapus', true);
+      const yakin = await showConfirm('Soal ini akan dihapus secara permanen. Lanjutkan?', 'Hapus Soal', 'Ya, Hapus', true);
       if (!yakin) return;
 
       await fetch(`/api/soal/${id}`, { method: 'DELETE' });
@@ -858,11 +842,11 @@ function renderConfigsTable(configs) {
     async function hapusSoalTerpilih() {
       const selected = Array.from(document.querySelectorAll('.soal-checkbox:checked')).map(cb => cb.value);
       if (selected.length === 0) {
-        showToast('Pilih minimal satu soal terlebih dahulu menggunakan kotak centang!', 'warning');
+        showToast('Pilih minimal satu soal terlebih dahulu!', 'warning');
         return;
       }
 
-      const yakin = await showConfirm(`Anda akan menghapus ${selected.length} soal terpilih secara permanen. Lanjutkan?`, 'Hapus Soal Massal', 'Ya, Hapus Semua', true);
+      const yakin = await showConfirm(`Anda akan menghapus ${selected.length} soal terpilih. Lanjutkan?`, 'Hapus Soal Massal', 'Ya, Hapus', true);
       if (!yakin) return;
 
       const res = await fetch('/api/soal/bulk-delete', {
@@ -906,7 +890,7 @@ function renderConfigsTable(configs) {
         });
         const result = await res.json();
         if (result.success) {
-          showToast('Soal baru berhasil ditambahkan ke bank soal!', 'success');
+          showToast('Soal baru berhasil ditambahkan!', 'success');
           document.getElementById('formSoal').reset();
           toggleTipeSoal('pg');
           loadSoal(true);
@@ -926,13 +910,13 @@ function renderConfigsTable(configs) {
       const kelas = document.getElementById('importKelas').value.trim();
       const mapel = document.getElementById('importMapel').value.trim();
       if (!kelas || !mapel) {
-        showToast('Harap isi Target Kelas dan Target Mapel terlebih dahulu!', 'warning');
+        showToast('Harap isi Target Kelas dan Mapel!', 'warning');
         return;
       }
 
       const btn = document.getElementById('btnUploadExcel');
       btn.disabled = true;
-      btn.textContent = 'Mengunggah & Memproses...';
+      btn.textContent = 'Mengunggah...';
 
       try {
         const formData = new FormData();
@@ -951,7 +935,7 @@ function renderConfigsTable(configs) {
           showToast(result.message || 'Gagal memproses file Excel.', 'error', 5000);
         }
       } catch (err) {
-        showToast('Terjadi kesalahan saat upload Excel: ' + err.message, 'error');
+        showToast('Kesalahan saat upload Excel.', 'error');
       } finally {
         btn.disabled = false;
         btn.textContent = 'Upload Excel';
@@ -963,13 +947,13 @@ function renderConfigsTable(configs) {
       const kelas = document.getElementById('importKelas').value.trim();
       const mapel = document.getElementById('importMapel').value.trim();
       if (!kelas || !mapel) {
-        showToast('Harap isi Target Kelas dan Target Mapel terlebih dahulu!', 'warning');
+        showToast('Harap isi Target Kelas dan Mapel!', 'warning');
         return;
       }
 
       const btn = document.getElementById('btnUploadWord');
       btn.disabled = true;
-      btn.textContent = 'Mengunggah & Memproses...';
+      btn.textContent = 'Mengunggah...';
 
       try {
         const formData = new FormData();
@@ -988,7 +972,7 @@ function renderConfigsTable(configs) {
           showToast(result.message || 'Gagal memproses file Word.', 'error', 5000);
         }
       } catch (err) {
-        showToast('Terjadi kesalahan saat upload Word: ' + err.message, 'error');
+        showToast('Kesalahan saat upload Word.', 'error');
       } finally {
         btn.disabled = false;
         btn.textContent = 'Upload Word';
@@ -1101,8 +1085,28 @@ function renderConfigsTable(configs) {
       printWindow.document.close();
     }
 
+    // ==========================================
+    // AUTO-REFRESH REALTIME MONITORING (POLLING TIAP 5 DETIK)
+    // ==========================================
+    let activeTab = 'beranda';
+    const originalSwitchTab = switchTab;
+    switchTab = function(tabId) {
+      activeTab = tabId;
+      originalSwitchTab(tabId);
+    };
+
+    function refreshRealtimeData() {
+      if (activeTab === 'beranda') {
+        loadLiveFeed();
+        loadDashboardStats();
+      } else if (activeTab === 'monitoring') {
+        loadMonitoring();
+      }
+    }
+
     loadLiveFeed();
     loadDashboardStats();
+    setInterval(refreshRealtimeData, 5000);
   </script>
 </body>
 </html>
