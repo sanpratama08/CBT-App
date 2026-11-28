@@ -371,10 +371,7 @@ app.post('/api/admin/config', async (req, res) => {
     if (existingIdx >= 0) classConfigs[existingIdx] = newConfig;
     else classConfigs.push(newConfig);
 
-    // Simpan ke Google Sheets
     const saveResult = await saveConfigsToSheet(classConfigs);
-    
-    // Kirim respons dengan data configs terbaru agar langsung muncul di tabel admin
     res.json({ 
       success: true, 
       message: saveResult.success ? 'Token berhasil disimpan ke Google Sheets!' : 'Token disimpan di memori (Gagal sinkron Sheets: ' + saveResult.message + ')', 
@@ -399,6 +396,41 @@ app.get('/api/admin/hasil', async (req, res) => {
     res.json({ success: true, total: hasil.length, data: hasil });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+app.get('/api/admin/export-hasil', async (req, res) => {
+  try {
+    const { kelas, mapel } = req.query;
+    const hasil = await getResultsFromSheet();
+
+    const filtered = hasil.filter(d => {
+      const matchK = (!kelas || kelas === 'semua' || d.kelas.toLowerCase() === kelas.toLowerCase());
+      const matchM = (!mapel || mapel === 'semua' || d.mapel.toLowerCase() === mapel.toLowerCase());
+      return matchK && matchM;
+    });
+
+    const rowsForExcel = filtered.map((item, idx) => ({
+      No: idx + 1,
+      'Waktu Submit': item.waktu,
+      'Nama Siswa': item.nama,
+      'Username / NIS': item.username,
+      Kelas: item.kelas,
+      'Mata Pelajaran': item.mapel,
+      'Nilai Akhir': item.nilai
+    }));
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(rowsForExcel);
+    XLSX.utils.book_append_sheet(wb, ws, 'Rekap Nilai');
+
+    const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+
+    res.setHeader('Content-Disposition', 'attachment; filename=Rekap_Nilai_Ujian.xlsx');
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.send(buffer);
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Gagal export Excel: ' + err.message });
   }
 });
 
@@ -494,11 +526,57 @@ app.post('/api/ujian/start', async (req, res) => {
 app.post('/api/submit', async (req, res) => {
   try {
     const { nama, username, jawabanSiswa, kelas, mapel } = req.body;
-    if (!nama || !username) return res.status(400).json({ success: false, message: 'Data tidak lengkap!' });
+    if (!nama || !username) {
+      return res.status(400).json({ success: false, message: 'Data siswa tidak lengkap!' });
+    }
 
-    // (Logika penilaian siswa tetap berjalan seperti biasa)
-    res.json({ success: true });
+    const allQuestions = await getQuestionsCached();
+    const targetKelas = (kelas || '').trim().toLowerCase();
+    const targetMapel = (mapel || 'Umum').trim().toLowerCase();
+
+    const soalUjian = allQuestions.filter(q => {
+      return (q.kelas || '').trim().toLowerCase() === targetKelas && (q.mapel || 'Umum').trim().toLowerCase() === targetMapel;
+    });
+
+    let benar = 0;
+    let totalSoal = soalUjian.length;
+
+    if (totalSoal > 0 && jawabanSiswa) {
+      soalUjian.forEach(q => {
+        const jawabanSiswaItem = (jawabanSiswa[q.id] || '').trim().toLowerCase();
+        const kunciJawaban = (q.jawaban_benar || '').trim().toLowerCase();
+
+        if (q.tipe === 'isian') {
+          const alternatif = kunciJawaban.split('|').map(k => k.trim());
+          if (alternatif.includes(jawabanSiswaItem)) {
+            benar++;
+          }
+        } else {
+          if (jawabanSiswaItem === kunciJawaban) {
+            benar++;
+          }
+        }
+      });
+    }
+
+    const nilaiAkhir = totalSoal > 0 ? Math.round((benar / totalSoal) * 100) : 0;
+
+    const saveResult = await enqueueResultSave({
+      nama: nama.trim(),
+      username: username.trim(),
+      nilai: nilaiAkhir,
+      jawabanSiswa: jawabanSiswa || {},
+      kelas: kelas || 'Umum',
+      mapel: mapel || 'Umum'
+    });
+
+    if (!saveResult.success) {
+      console.warn('Peringatan: Gagal sync hasil ujian ke Google Sheets.');
+    }
+
+    res.json({ success: true, nilai: nilaiAkhir, benar, totalSoal });
   } catch (error) {
+    console.error('Error saat submit ujian:', error.message);
     res.status(500).json({ success: false, message: error.message });
   }
 });
@@ -512,8 +590,6 @@ app.post('/api/login', async (req, res) => {
 
     const validConfig = classConfigs.find(item => item.token && item.token.toString().trim().toUpperCase() === token.trim().toUpperCase());
     if (!validConfig) return res.status(400).json({ success: false, message: 'Token Ujian salah atau tidak terdaftar.' });
-
-    // VALIDASI WAKTU BERKALA TELAH DIHAPUS, SEHINGGA TOKEN BEBAS DIGUNAKAN KAPAN SAJA
 
     res.json({ 
       success: true, 

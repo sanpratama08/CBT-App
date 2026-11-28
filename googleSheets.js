@@ -15,23 +15,19 @@ function formatPrivateKey(rawKey) {
   if (!rawKey) return '';
   let cleanKey = rawKey.trim();
   
-  // Hapus tanda kutip di awal dan akhir jika ikut tersalin di environment variables
   if ((cleanKey.startsWith('"') && cleanKey.endsWith('"')) || (cleanKey.startsWith("'") && cleanKey.endsWith("'"))) {
     cleanKey = cleanKey.slice(1, -1);
   }
   
-  // Ubah string literal \n menjadi enter baris baru sesungguhnya
   return cleanKey.replace(/\\n/g, '\n');
 }
 
 if (fs.existsSync(credentialsPath)) {
-  // Gunakan file credentials.json langsung jika tersedia di komputer lokal
   auth = new google.auth.GoogleAuth({
     keyFile: credentialsPath,
     scopes: ['https://www.googleapis.com/auth/spreadsheets'],
   });
 } else {
-  // Gunakan Environment Variables (untuk Vercel) dengan pembersihan format key
   const privateKey = formatPrivateKey(process.env.GOOGLE_PRIVATE_KEY);
 
   auth = new google.auth.GoogleAuth({
@@ -189,7 +185,7 @@ async function deleteQuestionsFromSheet(ids, sheetName = 'Soal') {
 }
 
 // ------------------------------------------
-// 2. MANAJEMEN HASIL / REKAP NILAI (TAB: Hasil)
+// 2. MANAJEMEN HASIL / REKAP NILAI (TAB: Hasil - 7 Kolom)
 // ------------------------------------------
 
 async function saveResultToSheet(nama, username, nilai, jawabanSiswa, kelas = 'Umum', mapel = 'Umum', sheetName = 'Hasil') {
@@ -199,13 +195,13 @@ async function saveResultToSheet(nama, username, nilai, jawabanSiswa, kelas = 'U
 
     const waktuSubmit = new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' });
     const newRow = [
-      waktuSubmit,
-      nama,
-      username,
-      kelas,
-      mapel,
-      nilai,
-      JSON.stringify(jawabanSiswa || {})
+      waktuSubmit,                  // Kolom A: timestamp
+      nama,                         // Kolom B: nama
+      username,                     // Kolom C: nis_username
+      kelas,                        // Kolom D: kelas
+      mapel,                        // Kolom E: mapel
+      nilai,                        // Kolom F: nilai
+      JSON.stringify(jawabanSiswa || {}) // Kolom G: detail_jawaban
     ];
 
     await googleSheets.spreadsheets.values.append({
@@ -282,7 +278,6 @@ async function saveConfigsToSheet(configs, sheetName = 'Config') {
     const client = await auth.getClient();
     const googleSheets = google.sheets({ version: 'v4', auth: client });
 
-    // Pastikan tab Config ada dan bersihkan rentang baris lama
     await googleSheets.spreadsheets.values.clear({
       spreadsheetId: getSpreadsheetId(),
       range: `${sheetName}!A2:F100`,
@@ -308,8 +303,7 @@ async function saveConfigsToSheet(configs, sheetName = 'Config') {
 
     return { success: true };
   } catch (error) {
-    console.error('Gagal sync ke Google Sheets:', error.message);
-    // Kembalikan status false agar kita tahu jika masih ada error Google Auth
+    console.error('Gagal menyimpan config ke Sheets:', error.message);
     return { success: false, message: error.message };
   }
 }
